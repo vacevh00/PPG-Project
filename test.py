@@ -1,7 +1,8 @@
 import pandas as pd
 import numpy as np
 from pandas.tseries.offsets import BusinessDay
-
+from collections import defaultdict
+import datetime
 
 '''
 PPG_Planning_Class
@@ -9,12 +10,13 @@ Item
 Plant
 Required_Completion_Date
 '''
-# PRUEBAS DE AQUI HACIA ABAJO
+# Clase para representar cada lote de un color
 class Color:
     def __init__(self, nombre, planta, fecha_fin, standar_prod_time, routing_code):
         self.nombre = nombre
         self.planta = planta
         self.fecha_fin = fecha_fin
+        #self.fecha_required = fecha_required
         self.standar_prod_time = standar_prod_time
         self.routing_code = routing_code
     
@@ -22,36 +24,43 @@ class Color:
         self.nombre = nombre
         self.planta = planta
         self.fecha = fecha_fin
+        #self.fecha_required = fecha_required
         self.standar_prod_time = standar_prod_time
         self.routing_code = routing_code
+    
+    def getNombre(self):
+        return self.nombre
 
     def __repr__(self):
         return f"Color(nombre={self.nombre}, planta={self.planta}, fecha_fin={self.fecha_fin}, standar_prod_time={self.standar_prod_time}, routing_code={self.routing_code})"
 
 
-    # faltaria poner los getters, porque setters ponemos lo de arriba
-
-
+# Clase que representa cada máquina
 class Equipo:
-    def __init__(self, color: Color, planta, tecnologia, capacidad):
-        self.color = color
+    def __init__(self, colores, planta, tecnologia, capacidad, equipo_tipo):
+        self.colores = set(colores)
+        self.equipo_tipo = equipo_tipo
         self.planta = planta
         self.tecnologia = tecnologia
         self.capacidad = capacidad
-        self.working = True # mirar esto porque alomejor no hace falta si tenemos fechas de inicio y fin
-        # mirar si tengo que poner fechas de inicio y final
 
-    def isWorking(self):
-        if self.working == False:
-            return False
-        return True
+    def add_color(self, color):
+        self.colores.add(color)
+    
+    def have_color(self, color):
+        return color in self.colores
+    
+    def to_string_set(self):
+        result = ""
+        for i in self.colores:
+            result += i + ", "
+        return result
     
     def __repr__(self):
-        return f"Equipo(planta={self.planta}, tecnologia={self.tecnologia}, color={self.color}, capacidad={self.capacidad})"
-
-    #falta poner los getters para devolver cosas
+        return f"Equipo(nombre={self.equipo_tipo}, planta={self.planta}, tecnologia={self.tecnologia}, color={self.to_string_set()}capacidad={self.capacidad})"
 
 
+# Lista con los pedidos que tenemos que fabricar
 def crear_lista_colores(datos_pinturas):
     lista_colores = []
     for _, fila in datos_pinturas.iterrows():
@@ -68,67 +77,125 @@ def crear_lista_colores(datos_pinturas):
         lista_colores.append(color_obj)
     return lista_colores
 
+# toString de una lista de colores
 def print_lista_colores(lista_colores):
     for color in lista_colores:
         print(color)
 
-def crear_lista_equipos(datos_equipos, datos_diluidores):
+# Lista con los equipos que tenemos en la fábrica
+def crear_lista_equipos(datos_equipos, datos_diluidores, lista_colores):
     lista_equipos = []
     
     # Convertimos datos_diluidores en un diccionario para acceder rápido a la cantidad de equipos
     diluidores_dict = pd.Series(datos_diluidores["Nº Equipos"].values, index=datos_diluidores["Etiquetas de fila"]).to_dict()
-    
+    colores2 = set()
+    equipo_ant = ""
+    planta2 = ""
+    tecnologia2 = ""
+    equipo_tipo2 = ""
+    capacidad2 = ""
     for _, fila in datos_equipos.iterrows():
         # Obtenemos el tipo de equipo y su cantidad desde datos_diluidores
-        equipo_tipo = fila["Equipo"]
-        cantidad = diluidores_dict.get(equipo_tipo, 1)  # Si no hay cantidad especificada, asumimos 1
-
-        # Creamos los objetos Equipo según la cantidad especificada
-        for _ in range(cantidad):
-            equipo_obj = Equipo(
-                planta=fila["Planta"],
-                tecnologia=fila["Tecnología"],
-                color=fila["Planning Class"],
-                capacidad=fila["Capacidad (lote/semana)"]
-            )
-            lista_equipos.append(equipo_obj)
-
+        equipo_tipo2 = fila["Equipo"]
+        if(equipo_ant==""):
+            equipo_ant = equipo_tipo2
+            colores2.add(fila["Planning Class"])
+        if(equipo_tipo2==equipo_ant):
+            colores2.add(fila["Planning Class"])
+        else:
+            for _ in range(diluidores_dict[equipo_ant]):
+                equipo_obj = Equipo(
+                    colores=colores2,
+                    planta=planta2,
+                    tecnologia=tecnologia2,
+                    equipo_tipo=equipo_tipo2,
+                    capacidad=capacidad2
+                )
+                lista_equipos.append(equipo_obj)
+            equipo_ant=equipo_tipo2
+            planta2=fila["Planta"]
+            tecnologia2=fila["Tecnología"]
+            capacidad2=fila["Capacidad (lote/semana)"]
     return lista_equipos
 
+# toString de los equipos
 def print_lista_equipos(lista_equipos):
     for equipo in lista_equipos:
         print(equipo)
 
-#-----------------------------------
+# ordena de más urgente a menos
+def ordenamiento_color(colores):
+    colores_ordenados = sorted(colores, key=lambda color: color.fecha_fin, reverse=False)
+    return colores_ordenados
 
-def print_pinturas(datos_pinturas):
-    #datos_pinturas["Tecnologia"].fillna("-", inplace=True)
+'''def planificar_produccion(lista_colores, lista_equipos):
+    lista_colores = ordenamiento_color(lista_colores)  # Ordenar colores por fecha_fin (descendente)
 
-    # esto lo tengo por ahora para hacer pruebas
-    for i in datos_pinturas["Routing_Code"]:
-        if i.split("-")[2] == "PPIMM" or i.split("-")[2] == "ZPIMM":
-            print(f"ES METALICO - {i}")
-        elif i.split("-")[2] == "PPISC" or i.split("-")[2] == "ZPISC":
-            print(f"ES OPACO - {i}")
-        else:
-            print("broma")
+    calendario_equipos = defaultdict(list)  # {equipo: [(inicio, fin), ...]}
+    cronograma = []  # [(color, equipo, inicio, fin)]
 
-    # Muestra los primeros registros
-    print("\n\n" + str(datos_pinturas))
+    for color in lista_colores:
+        asignado = False
 
-def print_equipos(datos_equipos):
-    # cambiar despues esto porque da warning de que esta deprecated
-    datos_equipos.fillna("-", inplace=True)
+        for equipo in lista_equipos:
+            if color.nombre not in equipo.colores:
+                continue  # Este equipo no puede fabricar este color
 
-    print(datos_equipos)
+            # Calcular el intervalo permitido para la producción
+            fecha_inicio_permitido, fecha_terminacion_minima, fecha_terminacion_maxima = calcular_intervalo_produccion(
+                color.fecha_fin, color.standar_prod_time
+            )
 
-def print_diluidores(datos_diluidores):
-    # cambiar despues esto porque da warning de que esta deprecated
-    datos_diluidores.fillna("-", inplace=True)
+            # Buscar un intervalo disponible para este equipo
+            intervalo_disponible = buscar_intervalo_disponible(
+                calendario_equipos[equipo],
+                fecha_inicio_permitido,
+                fecha_terminacion_maxima,
+                color.standar_prod_time
+            )
 
-    print(datos_diluidores)
+            if intervalo_disponible:
+                # Asignar el color a este equipo
+                inicio, fin = intervalo_disponible
+                calendario_equipos[equipo].append((inicio, fin))
+                calendario_equipos[equipo].sort()  # Mantener ordenado el calendario
+                cronograma.append((color, equipo, inicio, fin))
+                asignado = True
+                print("Asignado")
+                break
+
+        if not asignado:
+            print(f"Advertencia: No se pudo asignar el color {color.nombre}")
+
+    return cronograma
 
 
+def buscar_intervalo_disponible(calendario, fecha_inicio, fecha_fin, duracion_dias):
+    duracion = BusinessDay(duracion_dias)
+    inicio_actual = fecha_inicio
+    while inicio_actual <= fecha_fin - duracion:
+        fin_actual = inicio_actual + duracion
+        # Verificar conflictos en el calendario
+        if all(fin_actual <= inicio or inicio_actual >= fin for inicio, fin in calendario):
+            return (inicio_actual, fin_actual)
+        # Avanzar al siguiente día hábil
+        inicio_actual += BusinessDay()
+    return None
+
+def print_cronograma(cronograma):
+    for color, equipo, inicio, fin in cronograma:
+        print(f"Color {color.nombre} -> Equipo {equipo.equipo_tipo}: {inicio} - {fin}")
+
+def calcular_intervalo_produccion(fecha_fin, duracion_dias):
+    business_day_offset = BusinessDay()
+    fecha_terminacion_minima = fecha_fin - 2 * business_day_offset
+    fecha_terminacion_maxima = fecha_fin + 2 * business_day_offset
+    fecha_inicio_ideal = fecha_fin - duracion_dias * business_day_offset
+    fecha_inicio_permitido = max(fecha_inicio_ideal, fecha_terminacion_minima - duracion_dias * business_day_offset)
+    return fecha_inicio_permitido, fecha_terminacion_minima, fecha_terminacion_maxima
+'''
+
+# main
 if __name__=="__main__":
     ruta_archivo = "./plan.xlsx"
     datos_pinturas = pd.read_excel(ruta_archivo, sheet_name="prod", usecols=["PPG_Planning_Class", "Item", "Plant","Required_Completion_Date", "Standard_Prod_Time", "Routing_Code"])
@@ -136,7 +203,8 @@ if __name__=="__main__":
     datos_diluidores = pd.read_excel(ruta_archivo, sheet_name="maquinas", usecols=["Etiquetas de fila", "Nº Equipos"])
     #print_pinturas(datos_pinturas)
     lista_colores = crear_lista_colores(datos_pinturas)
-    print_lista_colores(lista_colores)
-    lista_equipos = crear_lista_equipos(datos_equipos, datos_diluidores)
-    print_lista_equipos(lista_equipos)
-
+    #print_lista_colores(lista_colores)
+    lista_equipos = crear_lista_equipos(datos_equipos, datos_diluidores, lista_colores)
+    #print_lista_equipos(lista_equipos)
+    #cronograma = planificar_produccion(lista_colores, lista_equipos)
+    #print_cronograma(cronograma)
