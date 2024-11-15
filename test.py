@@ -37,12 +37,13 @@ class Color:
 
 # Clase que representa cada máquina
 class Equipo:
-    def __init__(self, colores, planta, tecnologia, capacidad, equipo_tipo):
-        self.colores = set(colores)
-        self.equipo_tipo = equipo_tipo
+    def __init__(self, clases, planta, tecnologia, capacidad, nombre, cantidad):
+        self.clases = set(clases)
+        self.nombre = nombre
         self.planta = planta
         self.tecnologia = tecnologia
         self.capacidad = capacidad
+        self.cantidad = cantidad
 
     def add_color(self, color):
         self.colores.add(color)
@@ -52,12 +53,12 @@ class Equipo:
     
     def to_string_set(self):
         result = ""
-        for i in self.colores:
+        for i in self.clases:
             result += i + ", "
         return result
     
     def __repr__(self):
-        return f"Equipo(nombre={self.equipo_tipo}, planta={self.planta}, tecnologia={self.tecnologia}, color={self.to_string_set()}capacidad={self.capacidad})"
+        return f"Equipo(nombre={self.nombre}, planta={self.planta}, tecnologia={self.tecnologia}, clases={self.to_string_set()}, capacidad={self.capacidad}, cantidad={self.cantidad})"
 
 
 # Lista con los pedidos que tenemos que fabricar
@@ -74,6 +75,11 @@ def crear_lista_colores(datos_pinturas):
             standar_prod_time=fila["Standard_Prod_Time"],
             routing_code=fila["Routing_Code"]
         )
+        color_obj.fecha_fin = color_obj.fecha_fin.date()
+        if color_obj.routing_code.split("-")[2] == "PPIMM" or color_obj.routing_code.split("-")[2] == "ZPIMM":
+            color_obj.routing_code ="Metalico"
+        elif color_obj.routing_code.split("-")[2] == "PPISC" or color_obj.routing_code.split("-")[2] == "ZPISC":
+            color_obj.routing_code ="Opaco"
         lista_colores.append(color_obj)
     return lista_colores
 
@@ -83,7 +89,7 @@ def print_lista_colores(lista_colores):
         print(color)
 
 # Lista con los equipos que tenemos en la fábrica
-def crear_lista_equipos(datos_equipos, datos_diluidores, lista_colores):
+'''def crear_lista_equipos(datos_equipos, datos_diluidores, lista_colores):
     lista_equipos = []
     
     # Convertimos datos_diluidores en un diccionario para acceder rápido a la cantidad de equipos
@@ -105,18 +111,54 @@ def crear_lista_equipos(datos_equipos, datos_diluidores, lista_colores):
         else:
             for _ in range(diluidores_dict[equipo_ant]):
                 equipo_obj = Equipo(
-                    colores=colores2,
+                    planning-classes=colores2,
                     planta=planta2,
                     tecnologia=tecnologia2,
                     equipo_tipo=equipo_tipo2,
                     capacidad=capacidad2
                 )
+                if pd.isna(equipo_obj.capacidad):
+                    equipo_obj.capacidad = fila["Capacidad(Lote/dia)"]*5
                 lista_equipos.append(equipo_obj)
             equipo_ant=equipo_tipo2
             planta2=fila["Planta"]
             tecnologia2=fila["Tecnología"]
             capacidad2=fila["Capacidad (lote/semana)"]
+            colores2 = set()
+    return lista_equipos'''
+
+def crear_lista_equipos(datos_equipos, datos_diluidores, lista_colores):
+    lista_equipos = []
+    diluidores_dict = pd.Series(datos_diluidores["Nº Equipos"].values, index=datos_diluidores["Etiquetas de fila"]).to_dict()
+
+    for _, fila in datos_equipos.iterrows():
+        # Obtenemos el tipo de equipo y su cantidad desde datos_diluidores
+        nombreEq = fila["Equipo"]
+        cant = diluidores_dict.get(nombreEq, 1)  # Si no hay cantidad especificada, asumimos 1
+        
+        # Buscamos si ya existe un equipo del mismo tipo en la lista
+        equipo_existente = next((eq for eq in lista_equipos if eq.nombre == nombreEq), None)
+
+        if equipo_existente:
+            # Si existe, añadimos la clase si no está repetida
+            if fila["Planning Class"] not in equipo_existente.clases:
+                equipo_existente.clases.add(fila["Planning Class"])
+        else:
+            # Si no existe, creamos un nuevo equipo
+            equipo_obj = Equipo(
+                planta=fila["Planta"],
+                tecnologia=fila["Tecnología"],
+                clases={fila["Planning Class"]},  # Usamos un conjunto para evitar duplicados
+                capacidad=fila["Capacidad (lote/semana)"],
+                nombre=nombreEq,
+                cantidad=cant
+            )
+            if pd.isna(equipo_obj.capacidad):
+                equipo_obj.capacidad = fila["Capacidad(Lote/dia)"] * 5 #Teniendo en cuenta que la semana son 5 dias
+            lista_equipos.append(equipo_obj)
+
     return lista_equipos
+
 
 # toString de los equipos
 def print_lista_equipos(lista_equipos):
@@ -199,12 +241,13 @@ def calcular_intervalo_produccion(fecha_fin, duracion_dias):
 if __name__=="__main__":
     ruta_archivo = "./plan.xlsx"
     datos_pinturas = pd.read_excel(ruta_archivo, sheet_name="prod", usecols=["PPG_Planning_Class", "Item", "Plant","Required_Completion_Date", "Standard_Prod_Time", "Routing_Code"])
-    datos_equipos = pd.read_excel(ruta_archivo, sheet_name="equipos", usecols=["Planning Class", "Planta", "Tecnología", "Equipo", "Capacidad (lote/semana)"])
+    datos_equipos = pd.read_excel(ruta_archivo, sheet_name="equipos", usecols=["Planning Class", "Planta", "Tecnología", "Equipo", "Capacidad (lote/semana)", "Capacidad(Lote/dia)"])
     datos_diluidores = pd.read_excel(ruta_archivo, sheet_name="maquinas", usecols=["Etiquetas de fila", "Nº Equipos"])
     #print_pinturas(datos_pinturas)
     lista_colores = crear_lista_colores(datos_pinturas)
-    #print_lista_colores(lista_colores)
+    lista_colores = ordenamiento_color(lista_colores)
+    print_lista_colores(lista_colores)
     lista_equipos = crear_lista_equipos(datos_equipos, datos_diluidores, lista_colores)
-    #print_lista_equipos(lista_equipos)
+    print_lista_equipos(lista_equipos)
     #cronograma = planificar_produccion(lista_colores, lista_equipos)
     #print_cronograma(cronograma)
