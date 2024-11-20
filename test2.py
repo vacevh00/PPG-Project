@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from pandas.tseries.offsets import BusinessDay
 from collections import defaultdict
-from workalendar.europe import Spain
+from workalendar.europe import CastileAndLeon
 from datetime import timedelta
 from collections import defaultdict
 import matplotlib.pyplot as plt
@@ -18,37 +18,40 @@ Required_Completion_Date
 '''
 # Clase para representar cada lote de un color
 class Lote:
-    def __init__(self, nombre, planta, fecha_required, standar_prod_time, routing_code):
+    def __init__(self, nombre, planta, fecha_required, standar_prod_time, routing_code, item):
         self.nombre = nombre
         self.planta = planta
         #self.fecha_fin = fecha_fin
         self.fecha_required = fecha_required
         self.standar_prod_time = standar_prod_time
         self.routing_code = routing_code
+        self.item = item
     
-    def insertarMezclaNueva(self, nombre, planta, fecha_required, standar_prod_time, routing_code):
+    def insertarMezclaNueva(self, nombre, planta, fecha_required, standar_prod_time, routing_code, item):
         self.nombre = nombre
         self.planta = planta
         #self.fecha = fecha_fin
         self.fecha_required = fecha_required
         self.standar_prod_time = standar_prod_time
         self.routing_code = routing_code
+        self.item = item
     
     def getNombre(self):
         return self.nombre
 
     def __repr__(self):
-        return f"Lote(nombre={self.nombre}, planta={self.planta}, fecha_required={self.fecha_required}, standar_prod_time={self.standar_prod_time}, routing_code={self.routing_code})"
+        return f"Lote(nombre={self.nombre}, planta={self.planta}, fecha_required={self.fecha_required}, standar_prod_time={self.standar_prod_time}, routing_code={self.routing_code} item={self.item})"
 
 
 # Clase que representa cada máquina
 class Equipo:
-    def __init__(self, colores, planta, tecnologia, equipo_tipo):
+    def __init__(self, colores, planta, tecnologia, equipo_tipo, id):
         self.colores = set(colores)
         self.equipo_tipo = equipo_tipo
         self.planta = planta
         self.tecnologia = tecnologia
         self.disponibilidad = defaultdict(lambda: True)  # Fechas inicializadas como disponibles
+        self.id = id
 
     def esta_disponible(self, fecha_inicio, fecha_fin):
         # Verifica si el equipo está disponible en todas las fechas del rango
@@ -67,7 +70,7 @@ class Equipo:
 
     @staticmethod
     def generar_rango(fecha_inicio, fecha_fin):
-        cal = Spain()
+        cal = CastileAndLeon()
         rango = [
             fecha_inicio + timedelta(days=i)
             for i in range((fecha_fin - fecha_inicio).days + 1)
@@ -76,15 +79,18 @@ class Equipo:
 
     @staticmethod
     def calcular_fecha_fin(fecha_inicio, dias_laborales):
-        cal = Spain() 
+        cal = CastileAndLeon() 
         dias_contados = 0
         fecha_actual = fecha_inicio
 
         while dias_contados < dias_laborales:
             if cal.is_working_day(fecha_actual):
                 dias_contados += 1
-            fecha_actual += timedelta(days=1) 
-
+                fecha_actual += timedelta(days=1) 
+            elif fecha_actual.weekday() == 6 and cal.is_holiday(fecha_actual):
+                fecha_actual += timedelta(days=2) 
+            else:
+                fecha_actual += timedelta(days=1) 
         return fecha_actual
 
     def add_color(self, color):
@@ -100,7 +106,7 @@ class Equipo:
         return result
     
     def __repr__(self):
-        return f"Equipo(nombre={self.equipo_tipo}, planta={self.planta}, tecnologia={self.tecnologia}, color={self.to_string_set()})"
+        return f"Equipo(nombre={self.equipo_tipo}, id={self.id} planta={self.planta}, tecnologia={self.tecnologia}, color={self.to_string_set()})"
 
 
 # Lista con los pedidos que tenemos que fabricar
@@ -115,7 +121,8 @@ def crear_lista_colores(datos_pinturas):
             planta=fila["Plant"],
             fecha_required=fila["Required_Completion_Date"],
             standar_prod_time=fila["Standard_Prod_Time"],
-            routing_code=fila["Routing_Code"]
+            routing_code=fila["Routing_Code"],
+            item=fila["Item"]
         )
         lista_colores.append(color_obj)
     return lista_colores
@@ -149,12 +156,13 @@ def crear_lista_equipos(datos_equipos, datos_diluidores, lista_colores):
             planta2=fila["Planta"]
             tecnologia2=fila["Tecnología"]
         else:
-            for _ in range(diluidores_dict[equipo_ant]):
+            for i in range(diluidores_dict[equipo_ant]):
                 equipo_obj = Equipo(
                     colores=colores2,
                     planta=planta2,
                     tecnologia=tecnologia2,
                     equipo_tipo=equipo_ant,
+                    id=i
                 )
                 lista_equipos.append(equipo_obj)
             equipo_ant=equipo_tipo2
@@ -233,23 +241,23 @@ def visualizar_gantt(plan, titulo="Plan de Producción"):
     equipo_y_pos = {}  # Mapear equipos a posiciones en el eje Y
 
     # Calcular la posición en el eje Y para cada equipo
-    equipos = sorted(set(equipo.equipo_tipo for equipo, _, _ in plan.values()))
-    for i, equipo in enumerate(equipos):
-        equipo_y_pos[equipo] = i
+    equipos = sorted(set((equipo.equipo_tipo, equipo.id) for equipo, _, _ in plan.values()))
+    for i, (equipo_tipo, equipo_id) in enumerate(equipos):
+        equipo_y_pos[(equipo_tipo, equipo_id)] = i
 
     for i, (lote, (equipo, inicio, fin)) in enumerate(plan.items()):
-        y_pos = equipo_y_pos[equipo.equipo_tipo]
+        y_pos = equipo_y_pos[(equipo.equipo_tipo, equipo.id)]
         color = colores[i % len(colores)]  # Selecciona un color para el lote
 
         # Agregar barra para el lote
         ax.barh(y_pos, (fin - inicio).days, left=inicio, color=color, edgecolor="black", align="center")
 
         # Agregar etiqueta en la barra
-        ax.text(inicio + timedelta(days=1), y_pos, f"{lote.nombre} ({equipo.equipo_tipo})", va='center', fontsize=8)
+        ax.text(inicio + timedelta(days=1), y_pos, f"{lote.item} ({equipo.equipo_tipo})", va='center', fontsize=8)
 
     # Configurar eje Y con nombres de los equipos
     ax.set_yticks(list(equipo_y_pos.values()))
-    ax.set_yticklabels(list(equipo_y_pos.keys()))
+    ax.set_yticklabels([f"{equipo_tipo} (ID: {equipo_id})" for equipo_tipo, equipo_id in equipo_y_pos.keys()])
     ax.set_xlabel("Fechas")
     ax.set_ylabel("Equipos")
     ax.set_title(titulo)
@@ -276,7 +284,7 @@ if __name__=="__main__":
     plan = asignar_lotes_backtracking_max(lista_colores, lista_equipos)
     if plan:
         for lote, (equipo, inicio, fin) in plan.items():
-            print(f"{lote.nombre} asignado a {equipo.equipo_tipo} desde {inicio} hasta {fin}")
+            print(f"{lote.nombre} asignado a {equipo.equipo_tipo} id {equipo.id} desde {inicio} hasta {fin}")
         visualizar_gantt(plan)
     else:
         print("No se pudo generar un plan.")
