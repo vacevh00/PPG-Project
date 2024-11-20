@@ -1,8 +1,10 @@
 import tkinter as tk
+from tkinter import ttk
 from tkinter import messagebox
 from datetime import date, timedelta
 from workalendar.europe import Spain
 import random
+from datetime import datetime
 
 
 class MainWindow:
@@ -10,9 +12,12 @@ class MainWindow:
         self.root = root
         self.root.title("MAIN")
         self.root.geometry("600x500")
+        self.root.resizable(False, False)
 
         self.button = tk.Button(self.root, text="Iniciar aplicación", command=self.on_button_click)
-        self.button.pack(expand=True)
+        self.button2 = tk.Button(self.root, text="Añadir nuevo lote", command=self.on_button_click2)
+        self.button2.place(x=10, y=10)
+        self.button.place(relx=0.5, rely=0.5, anchor="center")
 
     def on_button_click(self):
         self.button.config(state="disabled")
@@ -28,6 +33,121 @@ class MainWindow:
         new_window.geometry("1200x900")
         new_window.protocol("WM_DELETE_WINDOW", app.on_close)
         new_window.mainloop()
+    
+    def on_button_click2(self):
+        self.button2.config(state="disabled")
+        self.root.after(1500, self.change_window2)
+    
+    def change_window2(self):
+        # Ocultar la ventana principal
+        self.root.withdraw()
+
+        new_window = tk.Tk()
+        config = Configuration(new_window, self.root, self.button2)
+        new_window.geometry("600x450")
+        new_window.protocol("WM_DELETE_WINDOW", config.on_close)
+        new_window.mainloop()
+
+class Configuration:
+    def __init__(self, root, main_window, main_button):
+        self.root = root
+        self.root.title("Añadir Lote")
+        self.main_window = main_window
+        self.main_button = main_button
+
+        # Configurar la ventana
+        self.root.geometry("500x900")
+        self.root.resizable(False, False)
+        self.root.protocol("WM_DELETE_WINDOW", self.on_close)
+
+        # Crear elementos de la interfaz
+        self.create_widgets()
+
+    def create_widgets(self):
+        # Etiqueta de título
+        tk.Label(self.root, text="Añadir Lote", font=("Arial", 16)).pack(pady=10)
+
+        # Campo para ID del lote
+        tk.Label(self.root, text="ID de Lote:").pack(anchor="w", padx=20, pady=5)
+        self.lote_id_entry = tk.Entry(self.root)
+        self.lote_id_entry.pack(fill="x", padx=20)
+
+        # Campo para Routing Code
+        tk.Label(self.root, text="Routing Code:").pack(anchor="w", padx=20, pady=5)
+        self.routing_code_entry = tk.Entry(self.root)
+        self.routing_code_entry.pack(fill="x", padx=20)
+
+        # Selección de Planta (Lista Desplegable)
+        tk.Label(self.root, text="Planta:").pack(anchor="w", padx=20, pady=5)
+        self.planta_options = ["VDC", "VDD", "VDW"]
+        self.planta_combo = ttk.Combobox(self.root, values=self.planta_options, state="readonly")
+        self.planta_combo.pack(fill="x", padx=20)
+        self.planta_combo.set("Seleccionar Planta")  # Placeholder inicial
+
+        # Selección de Planning Class (Lista Desplegable)
+        tk.Label(self.root, text="Planning Class:").pack(anchor="w", padx=20, pady=5)
+        self.planning_class_options = ["VD-APA", "VDCBE1", "VDCBM1", "VD-N4A", "VDWBBC"]
+        self.planning_class_combo = ttk.Combobox(self.root, values=self.planning_class_options, state="readonly")
+        self.planning_class_combo.pack(fill="x", padx=20)
+        self.planning_class_combo.set("Seleccionar Clase")  # Placeholder inicial
+
+        # Selección de Fecha de Inicio
+        tk.Label(self.root, text="Introduce la fecha (dd/mm/YYYY):").pack(anchor="w", padx=20, pady=5)
+        self.start_date = tk.Entry(self.root)
+        self.start_date.pack(fill="x", padx=20)
+
+        # Duración Estimada
+        tk.Label(self.root, text="Duración Estimada (días):").pack(anchor="w", padx=20, pady=5)
+        self.duracion_entry = tk.Entry(self.root)
+        self.duracion_entry.pack(fill="x", padx=20)
+
+        # Botón de Guardar
+        self.save_button = tk.Button(self.root, text="Guardar", command=self.save_data)
+        self.save_button.pack(pady=20)
+
+    def save_data(self):
+        # Obtener los datos del formulario
+        lote_id = self.lote_id_entry.get()
+        routing_code = self.routing_code_entry.get()
+        planta = self.planta_combo.get()
+        planning_class = self.planning_class_combo.get()
+        start_date = self.start_date.get()
+        duracion = self.duracion_entry.get()
+
+        # Validar datos
+        if not lote_id or not routing_code or planta == "Seleccionar Planta" or planning_class == "Seleccionar Clase" or not duracion.isdigit() or self.correctDate(start_date) == False:
+            messagebox.showerror("Error", "Por favor, complete todos los campos correctamente.")
+            return
+
+        # Simular guardar datos (puedes reemplazar esto con lógica real)
+        messagebox.showinfo("Guardado", f"Datos guardados:\n\n"
+                                        f"ID de Lote: {lote_id}\n"
+                                        f"Routing Code: {routing_code}\n"
+                                        f"Planta: {planta}\n"
+                                        f"Planning Class: {planning_class}\n"
+                                        f"Fecha de Inicio: {start_date}\n"
+                                        f"Duración Estimada: {duracion} días")
+        self.root.destroy()  # Cerrar la ventana después de guardar
+    
+    def correctDate(self, startDate):
+        try:
+            parsed_date = datetime.strptime(startDate, "%d/%m/%Y").date()
+            today = datetime.today().date()
+            # Verifica si la fecha es hoy o posterior
+            if parsed_date < today:
+                return False
+            else:
+                return True
+        except ValueError:
+            messagebox.showerror("Error", "Formato incorrecto. Usa dd/mm/YYYY.")
+
+    def on_close(self):
+        # Confirmación para cerrar
+        response = messagebox.askyesno("Confirmar salida", "¿Está seguro de que quiere salir?")
+        if response:
+            self.root.destroy()
+            self.main_window.deiconify()
+            self.main_button.config(state="normal")
 
 
 class App:
@@ -133,8 +253,16 @@ class App:
 
     
     def generar_color_aleatorio(self):
-        # Generar un color hexadecimal aleatorio, falta aun porque si es un gris o una familia del gris que no lo coja
-        return "#{:02x}{:02x}{:02x}".format(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+        while True:
+            r, g, b = random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)
+            
+            avg_intensity = (r + g + b) // 3
+            
+            if 50 <= avg_intensity <= 150 and abs(r - g) < 30 and abs(g - b) < 30 and abs(b - r) < 30:
+                continue
+            
+            return "#{:02x}{:02x}{:02x}".format(r, g, b)
+
 
 
     # segundo y cuarto parametro tienen que ser el mismo, nº de la fila
@@ -248,3 +376,4 @@ if __name__ == "__main__":
     root = tk.Tk()
     app = MainWindow(root)
     root.mainloop()
+
