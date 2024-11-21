@@ -271,7 +271,7 @@ def visualizar_gantt(plan, titulo="Plan de Producción"):
     plt.show()
 
 # main
-if __name__=="__main__":
+def main_app():
     ruta_archivo = "./plan.xlsx"
     datos_pinturas = pd.read_excel(ruta_archivo, sheet_name="prod", usecols=["PPG_Planning_Class", "Item", "Plant","Required_Completion_Date", "Standard_Prod_Time", "Routing_Code"])
     datos_equipos = pd.read_excel(ruta_archivo, sheet_name="equipos", usecols=["Planning Class", "Planta", "Tecnología", "Equipo", "Capacidad (lote/semana)"])
@@ -285,6 +285,6 @@ if __name__=="__main__":
     if plan:
         for lote, (equipo, inicio, fin) in plan.items():
             print(f"{lote.nombre} asignado a {equipo.equipo_tipo} id {equipo.id} desde {inicio} hasta {fin}")
-        visualizar_gantt(plan)
-    else:
-        print("No se pudo generar un plan.")
+        # visualizar_gantt(plan)
+        return plan, lista_equipos
+    return None

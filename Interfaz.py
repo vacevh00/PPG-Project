@@ -1,10 +1,11 @@
 import tkinter as tk
-from tkinter import ttk
 from tkinter import messagebox
 from datetime import date, timedelta
-from workalendar.europe import Spain
+from workalendar.europe import CastileAndLeon
 import random
+from tkinter import ttk
 from datetime import datetime
+import Backend_App
 
 
 class MainWindow:
@@ -17,6 +18,7 @@ class MainWindow:
         self.button = tk.Button(self.root, text="Iniciar aplicación", command=self.on_button_click)
         self.button2 = tk.Button(self.root, text="Añadir nuevo lote", command=self.on_button_click2)
         self.button2.place(x=10, y=10)
+        # self.button.pack(expand=True)
         self.button.place(relx=0.5, rely=0.5, anchor="center")
 
     def on_button_click(self):
@@ -33,7 +35,7 @@ class MainWindow:
         new_window.geometry("1200x900")
         new_window.protocol("WM_DELETE_WINDOW", app.on_close)
         new_window.mainloop()
-    
+
     def on_button_click2(self):
         self.button2.config(state="disabled")
         self.root.after(1500, self.change_window2)
@@ -41,66 +43,56 @@ class MainWindow:
     def change_window2(self):
         # Ocultar la ventana principal
         self.root.withdraw()
-
         new_window = tk.Tk()
         config = Configuration(new_window, self.root, self.button2)
         new_window.geometry("600x450")
         new_window.protocol("WM_DELETE_WINDOW", config.on_close)
         new_window.mainloop()
-
+        
 class Configuration:
     def __init__(self, root, main_window, main_button):
         self.root = root
         self.root.title("Añadir Lote")
         self.main_window = main_window
         self.main_button = main_button
-
         # Configurar la ventana
         self.root.geometry("500x900")
         self.root.resizable(False, False)
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
-
         # Crear elementos de la interfaz
         self.create_widgets()
 
     def create_widgets(self):
         # Etiqueta de título
         tk.Label(self.root, text="Añadir Lote", font=("Arial", 16)).pack(pady=10)
-
         # Campo para ID del lote
         tk.Label(self.root, text="ID de Lote:").pack(anchor="w", padx=20, pady=5)
         self.lote_id_entry = tk.Entry(self.root)
         self.lote_id_entry.pack(fill="x", padx=20)
-
         # Campo para Routing Code
         tk.Label(self.root, text="Routing Code:").pack(anchor="w", padx=20, pady=5)
         self.routing_code_entry = tk.Entry(self.root)
         self.routing_code_entry.pack(fill="x", padx=20)
-
         # Selección de Planta (Lista Desplegable)
         tk.Label(self.root, text="Planta:").pack(anchor="w", padx=20, pady=5)
-        self.planta_options = ["VDC", "VDD", "VDW"]
+        self.planta_options = ["VDC", "VDD", "VDW", "VDM"]
         self.planta_combo = ttk.Combobox(self.root, values=self.planta_options, state="readonly")
         self.planta_combo.pack(fill="x", padx=20)
         self.planta_combo.set("Seleccionar Planta")  # Placeholder inicial
-
         # Selección de Planning Class (Lista Desplegable)
         tk.Label(self.root, text="Planning Class:").pack(anchor="w", padx=20, pady=5)
         self.planning_class_options = ["VD-APA", "VDCBE1", "VDCBM1", "VD-N4A", "VDWBBC"]
         self.planning_class_combo = ttk.Combobox(self.root, values=self.planning_class_options, state="readonly")
         self.planning_class_combo.pack(fill="x", padx=20)
         self.planning_class_combo.set("Seleccionar Clase")  # Placeholder inicial
-
         # Selección de Fecha de Inicio
         tk.Label(self.root, text="Introduce la fecha (dd/mm/YYYY):").pack(anchor="w", padx=20, pady=5)
         self.start_date = tk.Entry(self.root)
         self.start_date.pack(fill="x", padx=20)
-
         # Duración Estimada
         tk.Label(self.root, text="Duración Estimada (días):").pack(anchor="w", padx=20, pady=5)
         self.duracion_entry = tk.Entry(self.root)
         self.duracion_entry.pack(fill="x", padx=20)
-
         # Botón de Guardar
         self.save_button = tk.Button(self.root, text="Guardar", command=self.save_data)
         self.save_button.pack(pady=20)
@@ -113,12 +105,10 @@ class Configuration:
         planning_class = self.planning_class_combo.get()
         start_date = self.start_date.get()
         duracion = self.duracion_entry.get()
-
         # Validar datos
         if not lote_id or not routing_code or planta == "Seleccionar Planta" or planning_class == "Seleccionar Clase" or not duracion.isdigit() or self.correctDate(start_date) == False:
             messagebox.showerror("Error", "Por favor, complete todos los campos correctamente.")
             return
-
         # Simular guardar datos (puedes reemplazar esto con lógica real)
         messagebox.showinfo("Guardado", f"Datos guardados:\n\n"
                                         f"ID de Lote: {lote_id}\n"
@@ -140,7 +130,6 @@ class Configuration:
                 return True
         except ValueError:
             messagebox.showerror("Error", "Formato incorrecto. Usa dd/mm/YYYY.")
-
     def on_close(self):
         # Confirmación para cerrar
         response = messagebox.askyesno("Confirmar salida", "¿Está seguro de que quiere salir?")
@@ -170,14 +159,13 @@ class App:
         self.buttons_frame.pack(fill="x")
         
         # Botones para cambiar de vista 
-        # PONER NOMBRE EQUIPOS EN VEZ DE "APARTADO X"
-        self.button1 = tk.Button(self.buttons_frame, text="Apartado 1", command=self.show_section_1)
+        self.button1 = tk.Button(self.buttons_frame, text="        VDW        ", command=self.show_section_1)
         self.button1.pack(side="left", padx=10)
-        self.button2 = tk.Button(self.buttons_frame, text="Apartado 2", command=self.show_section_2)
+        self.button2 = tk.Button(self.buttons_frame, text="        VDC        ", command=self.show_section_2)
         self.button2.pack(side="left", padx=10)
-        self.button3 = tk.Button(self.buttons_frame, text="Apartado 3", command=self.show_section_3)
+        self.button3 = tk.Button(self.buttons_frame, text="        VDM        ", command=self.show_section_3)
         self.button3.pack(side="left", padx=10)
-        self.button4 = tk.Button(self.buttons_frame, text="Apartado 4", command=self.show_section_4)
+        self.button4 = tk.Button(self.buttons_frame, text="        VDD        ", command=self.show_section_4)
         self.button4.pack(side="left", padx=10)
         
         # Definir cada sección
@@ -218,8 +206,8 @@ class App:
         return (primer_dia_mes_posterior - primer_dia_mes_siguiente).days
 
     def pintar_festivos(self, num_rows):
-        # Crear una instancia del calendario de España
-        cal = Spain()
+        # Crear una instancia del calendario de Castilla y Leon
+        cal = CastileAndLeon()
 
         # Obtener el mes y el año actual
         hoy = date.today()
@@ -253,6 +241,7 @@ class App:
 
     
     def generar_color_aleatorio(self):
+
         while True:
             r, g, b = random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)
             
@@ -264,11 +253,10 @@ class App:
             return "#{:02x}{:02x}{:02x}".format(r, g, b)
 
 
-
     # segundo y cuarto parametro tienen que ser el mismo, nº de la fila
     # primero y tercero son los valores que coge para sacar los dias que dura
     # no se ya ni que es j ni i, osea, que seguir esquema de arriba xd
-    def pintar_tareas(self, j, i, j2, i2):
+    def pintar_tareas(self, j, i, j2, i2, nombre_var):
         # MODIFICACIONES FUTURAS QUITAR "i2", no sirve de nada, con i vale
         '''
         Valores:
@@ -278,6 +266,8 @@ class App:
             - hasta donde llega Y (pintar 1 diluidor mas abajo +40)
         '''
         self.canvas.create_rectangle(100*j, 40*i, 100+100*j2, 40+40*i2, fill=self.generar_color_aleatorio(), outline="black")
+        self.canvas.create_text(((100*j) + (100+100*j2))/2, 20+40*i, text=nombre_var, fill="black", font=("Arial", 10, "bold"))
+
 
     def show_section_1(self):
         self.clear_center_frame()
@@ -304,7 +294,7 @@ class App:
             cell_height = 40
             num_rows = 30 # preguntar si me pueden devolver el array con todos los de esta seccion
             num_cols = self.dias_del_mes_siguiente()+1 # esto se cambia en base al numero de dias del siguiente mes
-            # print("DIAS: " + str(num_cols))
+            
 
             # Ajustar dinámicamente el scrollregion según el contenido
             self.canvas.config(scrollregion=(0, 0, num_cols * cell_width, num_rows * cell_height))
@@ -331,10 +321,10 @@ class App:
             # EJEMPLOS DE PRUEBA
             # segundo y cuarto parametro tienen que ser el mismo, nº de la fila
             # primero y tercero son los valores que coge para sacar los dias que dura
-            self.pintar_tareas(2,1,3,1)
-            self.pintar_tareas(4,1,5,1)
-            self.pintar_tareas(2,2,4,2) # j i j2 i2
-            # self.pintar_tareas(2,1,2,1)
+            self.pintar_tareas(2,1,3,1, "Nombre3")
+            self.pintar_tareas(4,1,5,1, "Nombre2")
+            self.pintar_tareas(2,2,4,2, "Nombre1") # j i j2 i2
+            self.pintar_tareas(2,3,5,3, "Nombre4")
             # self.pintar_tareas(2,2,2,3)
 
         self.section_1.pack(fill="both", expand=True)
@@ -376,4 +366,3 @@ if __name__ == "__main__":
     root = tk.Tk()
     app = MainWindow(root)
     root.mainloop()
-
