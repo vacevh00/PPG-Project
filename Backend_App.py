@@ -283,8 +283,8 @@ def main_app():
     #print_lista_equipos(lista_equipos)
     plan = asignar_lotes_backtracking_max(lista_colores, lista_equipos)
     if plan:
-        for lote, (equipo, inicio, fin) in plan.items():
-            print(f"{lote.nombre} asignado a {equipo.equipo_tipo} id {equipo.id} desde {inicio} hasta {fin}")
+        # for lote, (equipo, inicio, fin) in plan.items():
+        #     print(f"{lote.nombre} asignado a {equipo.equipo_tipo} id {equipo.id} desde {inicio} hasta {fin}")
         # visualizar_gantt(plan)
         return plan, lista_equipos
     return None
