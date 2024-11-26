@@ -15,15 +15,52 @@ class MainWindow:
         self.root.geometry("600x500")
         self.root.resizable(False, False)
 
-        self.button = tk.Button(self.root, text="Iniciar aplicación", command=self.on_button_click)
-        self.button2 = tk.Button(self.root, text="Añadir nuevo lote", command=self.on_button_click2)
+        # Cambiar el color de fondo de la ventana principal
+        self.root.configure(bg="#c4c4c4")  # Fondo gris claro
+
+        # Crear estilos personalizados para los botones
+        self.style = ttk.Style()
+        self.style.theme_use("clam")
+
+        # Estilo para el botón "Iniciar aplicación"
+        self.style.configure(
+            "Start.TButton",
+            font=("Arial", 12, "bold"),
+            foreground="white",
+            background="#007bff",  # Verde
+            padding=10
+        )
+        self.style.map("Start.TButton", background=[("active", "#0056b3")])  # Hover
+
+        # Estilo para el botón "Añadir nuevo lote"
+        self.style.configure(
+            "Add.TButton",
+            font=("Arial", 10, "bold"),
+            foreground="white",
+            background="#007bff",  # Azul
+            padding=10
+        )
+        self.style.map("Add.TButton", background=[("active", "#0056b3")])
+
+        # Botón "Iniciar aplicación"
+        self.button = ttk.Button(
+            text="Iniciar aplicación",
+            style="Start.TButton",
+            command=self.on_button_click
+        )
+
+        # Botón "Añadir nuevo lote"
+        self.button2 = ttk.Button(
+            text="Añadir nuevo lote",
+            style="Add.TButton",
+            command=self.on_button_click2
+        )
+
         self.button2.place(x=10, y=10)
-        # self.button.pack(expand=True)
         self.button.place(relx=0.5, rely=0.5, anchor="center")
 
     def on_button_click(self):
         self.button.config(state="disabled")
-
         self.root.after(2000, self.change_window)
 
     def change_window(self):
@@ -32,6 +69,7 @@ class MainWindow:
 
         new_window = tk.Tk()
         app = App(new_window, self.root, self.button)
+        new_window.state('zoomed')
         new_window.geometry("1200x900")
         new_window.protocol("WM_DELETE_WINDOW", app.on_close)
         new_window.mainloop()
@@ -42,7 +80,6 @@ class MainWindow:
     
     def change_window2(self):
         # Ocultar la ventana principal
-        self.root.withdraw()
         new_window = tk.Tk()
         config = Configuration(new_window, self.root, self.button2)
         new_window.geometry("600x450")
@@ -55,46 +92,71 @@ class Configuration:
         self.root.title("Añadir Lote")
         self.main_window = main_window
         self.main_button = main_button
-        # Configurar la ventana
+
+        # Configurar la ventana con el mismo color de fondo que en MainWindow
+        self.root.configure(bg="#c4c4c4")  # Fondo gris claro
         self.root.geometry("500x900")
         self.root.resizable(False, False)
+
+        # Crear los estilos para los botones de la misma manera que en MainWindow
+        self.style = ttk.Style()
+        self.style.theme_use("clam")
+
+        # Estilo para el botón "Guardar" (similar al botón "Iniciar aplicación")
+        self.style.configure(
+            "Save.TButton",
+            font=("Arial", 12, "bold"),
+            foreground="white",
+            background="#007bff",  # Azul
+            padding=10
+        )
+        self.style.map("Save.TButton", background=[("active", "#0056b3")])  # Hover
+
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
-        # Crear elementos de la interfaz
+
+        # Crear los widgets
         self.create_widgets()
 
     def create_widgets(self):
         # Etiqueta de título
-        tk.Label(self.root, text="Añadir Lote", font=("Arial", 16)).pack(pady=10)
+        tk.Label(self.root, text="Añadir Lote", font=("Arial", 16), bg="#c4c4c4").pack(pady=10)
+
         # Campo para ID del lote
-        tk.Label(self.root, text="ID de Lote:").pack(anchor="w", padx=20, pady=5)
+        tk.Label(self.root, text="ID de Lote:", bg="#c4c4c4").pack(anchor="w", padx=20, pady=5)
         self.lote_id_entry = tk.Entry(self.root)
         self.lote_id_entry.pack(fill="x", padx=20)
+
         # Campo para Routing Code
-        tk.Label(self.root, text="Routing Code:").pack(anchor="w", padx=20, pady=5)
+        tk.Label(self.root, text="Routing Code:", bg="#c4c4c4").pack(anchor="w", padx=20, pady=5)
         self.routing_code_entry = tk.Entry(self.root)
         self.routing_code_entry.pack(fill="x", padx=20)
+
         # Selección de Planta (Lista Desplegable)
-        tk.Label(self.root, text="Planta:").pack(anchor="w", padx=20, pady=5)
+        tk.Label(self.root, text="Planta:", bg="#c4c4c4").pack(anchor="w", padx=20, pady=5)
         self.planta_options = ["VDC", "VDD", "VDW", "VDM"]
         self.planta_combo = ttk.Combobox(self.root, values=self.planta_options, state="readonly")
         self.planta_combo.pack(fill="x", padx=20)
         self.planta_combo.set("Seleccionar Planta")  # Placeholder inicial
+
         # Selección de Planning Class (Lista Desplegable)
-        tk.Label(self.root, text="Planning Class:").pack(anchor="w", padx=20, pady=5)
+        tk.Label(self.root, text="Planning Class:", bg="#c4c4c4").pack(anchor="w", padx=20, pady=5)
         self.planning_class_options = ["VD-APA", "VDCBE1", "VDCBM1", "VD-N4A", "VDWBBC"]
         self.planning_class_combo = ttk.Combobox(self.root, values=self.planning_class_options, state="readonly")
         self.planning_class_combo.pack(fill="x", padx=20)
         self.planning_class_combo.set("Seleccionar Clase")  # Placeholder inicial
+
         # Selección de Fecha de Inicio
-        tk.Label(self.root, text="Introduce la fecha (dd/mm/YYYY):").pack(anchor="w", padx=20, pady=5)
+        tk.Label(self.root, text="Introduce la fecha (dd/mm/YYYY):", bg="#c4c4c4").pack(anchor="w", padx=20, pady=5)
         self.start_date = tk.Entry(self.root)
         self.start_date.pack(fill="x", padx=20)
+
         # Duración Estimada
-        tk.Label(self.root, text="Duración Estimada (días):").pack(anchor="w", padx=20, pady=5)
+        tk.Label(self.root, text="Duración Estimada (días):", bg="#c4c4c4").pack(anchor="w", padx=20, pady=5)
         self.duracion_entry = tk.Entry(self.root)
         self.duracion_entry.pack(fill="x", padx=20)
-        # Botón de Guardar
-        self.save_button = tk.Button(self.root, text="Guardar", command=self.save_data)
+
+        # Botón de Guardar con el estilo configurado
+        self.save_button = ttk.Button(self.root, text="Guardar", style="Save.TButton", command=self.save_data)
         self.save_button.pack(pady=20)
 
     def save_data(self):
@@ -118,6 +180,7 @@ class Configuration:
                                         f"Fecha de Inicio: {start_date}\n"
                                         f"Duración Estimada: {duracion} días")
         self.root.destroy()  # Cerrar la ventana después de guardar
+        self.main_button.config(state="normal")
     
     def correctDate(self, startDate):
         try:
@@ -640,17 +703,17 @@ if __name__ == "__main__":
     root.mainloop()
     
 
-    # plan, lista_equipos = Backend_App.main_app()
+    plan, lista_equipos = Backend_App.main_app()
 
-    # for i in plan:
-    #     print(i)
+"""     for i in plan:
+         print(i)
 
-    # print("\n\n\n")
+    print("\n\n\n")
 
-    # for i in lista_equipos:
-    #     print(i)
+    for i in lista_equipos:
+         print(i)
 
 
-    # for lote, (equipo, inicio, fin) in plan.items():
-    #     print(f"{lote.nombre} asignado a {equipo.equipo_tipo} planta {equipo.planta} id {equipo.id} desde {inicio} hasta {fin}")
+    for lote, (equipo, inicio, fin) in plan.items():
+         print(f"{lote.nombre} asignado a {equipo.equipo_tipo} planta {equipo.planta} id {equipo.id} desde {inicio} hasta {fin}") """
 
