@@ -1,4 +1,5 @@
 import tkinter as tk
+from tkinter import TclError
 from tkinter import messagebox
 from datetime import date, timedelta
 from workalendar.europe import CastileAndLeon
@@ -6,6 +7,7 @@ import random
 from tkinter import ttk
 from datetime import datetime
 import Backend_App
+import pandas as pd
 
 
 class MainWindow:
@@ -69,7 +71,10 @@ class MainWindow:
 
         new_window = tk.Tk()
         app = App(new_window, self.root, self.button)
-        new_window.state('zoomed')
+        try:
+            new_window.state('zoomed')
+        except TclError:
+            pass
         new_window.geometry("1200x900")
         new_window.protocol("WM_DELETE_WINDOW", app.on_close)
         new_window.mainloop()
@@ -209,6 +214,7 @@ class App:
         self.plan, self.lista_equipos = Backend_App.main_app()
         self.main_window = main_window
         self.main_button = main_button
+        self.current_month = date.today().month + 1
         
         # Frame principal
         self.main_frame = tk.Frame(self.root)
@@ -251,25 +257,47 @@ class App:
         self.section_3 = tk.Frame(self.center_frame)
         self.section_4 = tk.Frame(self.center_frame)
 
-        self.show_section_1()
+        #self.show_section_1()
 
     # TO-DO Meses
-    def on_month_selected(self,event):
+    def on_month_selected(self, event=None, section=1):
+        """
+        Callback que se ejecuta al seleccionar un mes desde el combobox.
+        Actualiza la tabla con los festivos y tareas correspondientes al mes seleccionado.
+        """
         selected_month = self.month_combobox.get()
-        # CAMBIAR A MES SELECCIONADO
+        mes = self.months.index(selected_month) + 1  # Convertir a índice de mes (1-12)
+        anio = date.today().year
+        self.current_month = mes
+        # Redibujar la tabla para el mes seleccionado
+        self.clear_center_frame()  # Limpiar la tabla actual
+        if section==1:
+            self.show_section_1(mes, anio) 
+        elif section==2:
+            self.show_section_2(mes, anio) 
+        elif section==3:
+            self.show_section_3(mes, anio) 
+        else:
+            self.show_section_4(mes, anio)
 
-    # CON ESTA FUNCION VAMOS A PINTAR, SE VA A LLAMAR DESPUES X VECES
     def pintar_festivos_tabla(self, dia, num_rows):
-        # Ejemplo de una tarea como gantt
-        aux = dia.day
-        #self.canvas.create_rectangle(100, 80, 500, 120, fill="blue", outline="black")
-        #self.canvas.create_rectangle(100*aux, 80, 100+100*aux, 120, fill="gray", outline="black")
-        #self.canvas.create_text(200, 60, text="Tarea_1", fill="white", font=("Arial", 10))
+        # Obtener el índice del día en la cuadrícula
+        dia_indice = dia.day  # Usamos el atributo `.day` del objeto `date`
 
+        # Definir el tamaño de las celdas (debe coincidir con el tamaño usado en show_section_1)
+        cell_width = max(self.root.winfo_width() // 20, 80)
+        cell_height = max(self.root.winfo_height() // 30, 30)
+
+        # Pintar el fondo de las celdas de los días no lectivos
         for i in range(num_rows):
-            self.canvas.create_rectangle(100*aux, 40*i, 100+100*aux, 80*i, fill="gray", outline="black")
+            x1 = cell_width * dia_indice
+            y1 = cell_height * (i + 1)  # Las filas de datos empiezan en la segunda fila
+            x2 = x1 + cell_width
+            y2 = y1 + cell_height
 
-    def dias_del_mes_siguiente(self):
+            self.canvas.create_rectangle(x1, y1, x2, y2, fill="gray", outline="black")
+
+    def dias_del_mes_siguiente(self, ):
         hoy = date.today()
 
         mes_siguiente = hoy.month + 1 if hoy.month < 12 else 1
@@ -287,39 +315,46 @@ class App:
 
         return (primer_dia_mes_posterior - primer_dia_mes_siguiente).days
 
-    def pintar_festivos(self, num_rows):
-        # Crear una instancia del calendario de Castilla y Leon
+    def pintar_festivos(self, num_rows, mes):
+        """
+        Calcula y pinta los días festivos del mes seleccionado en la tabla.
+        """
+        # Crear una instancia del calendario de Castilla y León
         cal = CastileAndLeon()
 
-        # Obtener el mes y el año actual
+        # Obtener el rango de fechas del mes seleccionado
         hoy = date.today()
-        mes_siguiente = hoy.month % 12 + 1
-        anio_siguiente = hoy.year + (1 if mes_siguiente == 1 else 0)
+        anio = hoy.year
+        primer_dia = date(anio, mes, 1)
+        ultimo_dia = self.ultimo_dia_mes(mes)
 
-        # Calcular el rango de fechas para el mes siguiente
-        primer_dia = date(anio_siguiente, mes_siguiente, 1)
-        if mes_siguiente == 12:  # Caso especial: diciembre
-            primer_dia_siguiente = date(anio_siguiente + 1, 1, 1)
-        else:
-            primer_dia_siguiente = date(anio_siguiente, mes_siguiente + 1, 1)
-
-        # Recorrer todos los días del mes siguiente
-        dia_actual = primer_dia
+        # Calcular los días festivos y fines de semana
         dias_no_lectivos = []
-
-        while dia_actual < primer_dia_siguiente:
-            if cal.is_holiday(dia_actual) or dia_actual.weekday() in [5, 6]:  # Sábado (5) o domingo (6)
+        dia_actual = primer_dia
+        while dia_actual <= ultimo_dia:
+            if cal.is_holiday(dia_actual) or dia_actual.weekday() in [5, 6]:  # Sábado o domingo
                 dias_no_lectivos.append(dia_actual)
-                # Si el día es domingo y festivo, añadir el lunes como festivo
-                if dia_actual.weekday() == 6 and cal.is_holiday(dia_actual):  # Domingo festivo
+                # Añadir el lunes siguiente si es domingo festivo
+                if dia_actual.weekday() == 6 and cal.is_holiday(dia_actual):
                     lunes_siguiente = dia_actual + timedelta(days=1)
-                    if lunes_siguiente not in dias_no_lectivos:  # Evitar duplicados
+                    if lunes_siguiente not in dias_no_lectivos:
                         dias_no_lectivos.append(lunes_siguiente)
             dia_actual += timedelta(days=1)
 
-        # pinta dias no lectivos
+        # Pintar los días no lectivos en la tabla
         for dia in dias_no_lectivos:
             self.pintar_festivos_tabla(dia, num_rows)
+
+    def ultimo_dia_mes(self, mes):
+        """
+        Devuelve el último día del mes especificado.
+        """
+        hoy = date.today()
+        anio = hoy.year
+        if mes == 12:
+            return date(anio, 12, 31)
+        else:
+            return date(anio, mes + 1, 1) - timedelta(days=1)
 
     
     def generar_color_aleatorio(self):
@@ -339,49 +374,72 @@ class App:
     # primero y tercero son los valores que coge para sacar los dias que dura
     # no se ya ni que es j ni i, osea, que seguir esquema de arriba xd
     def pintar_tareas(self, j, i, j2, i2, nombre_var):
-        # MODIFICACIONES FUTURAS QUITAR "i2", no sirve de nada, con i vale
-        '''
-        Valores:
-            - donde empieza en X (pintar 1 dia mas +100)
-            - donde empieza en Y (pintar 1 diluidor mas abajo +40)
-            - hasta donde llega X (pintar 1 dia mas +100)
-            - hasta donde llega Y (pintar 1 diluidor mas abajo +40)
-        '''
-        self.canvas.create_rectangle(100*j, 40*i, 100+100*j2, 40+40*i2, fill=self.generar_color_aleatorio(), outline="black")
-        self.canvas.create_text(((100*j) + (100+100*j2))/2, 20+40*i, text=nombre_var, fill="black", font=("Arial", 10, "bold"))
+        """
+        Pinta una tarea en el canvas, ajustándose dinámicamente al tamaño de las celdas.
 
-    def segregar_eventos(self, equipos_total, planta):
+        Args:
+            j: Día de inicio (columna inicial).
+            i: Índice de la fila (equipo).
+            j2: Día de fin (columna final).
+            i2: Mismo valor que `i` (se puede eliminar en futuras versiones).
+            nombre_var: Nombre de la tarea a mostrar.
+        """
+        # Obtener dimensiones de las celdas dinámicamente
+        cell_width = max(self.root.winfo_width() // 20, 80)  # Ancho mínimo de 80 px
+        cell_height = max(self.root.winfo_height() // 30, 30)  # Alto mínimo de 30 px
+
+        # Coordenadas iniciales y finales de la tarea
+        x1 = j * cell_width
+        y1 = i * cell_height
+        x2 = j2 * cell_width + cell_width  # Final de la tarea, suma una celda más
+        y2 = i2 * cell_height + cell_height  # Final de la fila
+
+        # Dibujar rectángulo de la tarea
+        self.canvas.create_rectangle(x1, y1, x2, y2, fill=self.generar_color_aleatorio(), outline="black")
+
+        # Dibujar texto centrado en el rectángulo
+        self.canvas.create_text(
+            (x1 + x2) / 2, (y1 + y2) / 2,  # Coordenadas centradas
+            text=nombre_var,
+            fill="black",
+            font=("Arial", 10, "bold")
+        )
+
+    def segregar_eventos(self, equipos_total, planta, mes, anio):
+        primer_dia_mes = pd.Timestamp(year=anio, month=mes, day=1)
+        ultimo_dia_mes = primer_dia_mes + pd.offsets.MonthEnd(0)
 
         for lote, (equipo, inicio, fin) in self.plan.items():
             # print(f"{lote.nombre} asignado a {equipo.equipo_tipo} id {equipo.id} desde {inicio} hasta {fin}")
+            inicio = pd.Timestamp(inicio) if not isinstance(inicio, pd.Timestamp) else inicio
+            fin = pd.Timestamp(fin) if not isinstance(fin, pd.Timestamp) else fin
 
             if equipo.planta != planta:
                 continue
 
-            if fin < self.primer_dia_mes_siguiente():
+            if fin < primer_dia_mes:
                 continue
 
-            if not self.es_del_proximo_mes(fin):
-                fin = None
-
-            if not self.es_del_proximo_mes(inicio):
-                inicio = None
-
-            if fin is None and inicio is None:
+            if inicio > ultimo_dia_mes:
                 continue
-            else:
-                if fin == None:
-                    fin = self.ultimo_dia_mes_siguiente()
-                elif inicio == None:
-                    inicio = self.primer_dia_mes_siguiente()
 
+            # Recortar inicio y fin para pintar solo dentro del mes seleccionado
+            if inicio < primer_dia_mes:
+                inicio = primer_dia_mes
+
+            if fin > ultimo_dia_mes:
+                fin = ultimo_dia_mes
+
+            # Encontrar el índice del equipo en la lista
             resultado = next(((i, e) for i, e in enumerate(equipos_total) if e.id == equipo.id), None)
+            if resultado is None:
+                continue
 
-            # Siempre lo encuentra, si no lo encuentra pues a bailar
             indice, equipo_encontrado = resultado
 
-            self.pintar_tareas(inicio.day,indice+1,fin.day,indice+1,lote.nombre)
-
+            # Pintar la tarea en el canvas
+            self.pintar_tareas(inicio.day, indice + 1, fin.day, indice + 1, lote.nombre)
+               
     def primer_dia_mes_siguiente(self):
         hoy = datetime.now()
 
@@ -428,259 +486,291 @@ class App:
         # Verificar si la fecha pertenece al próximo mes y año
         return fecha.month == proximo_mes and fecha.year == anio
 
-    def show_section_1(self):
+    def show_section_1(self, mes=date.today().month, anio=date.today().year):
         self.clear_center_frame()
 
         if not hasattr(self, 'canvas'):
+            # Crear un marco para el canvas y scrollbars
             self.canvas_frame = tk.Frame(self.section_1)
             self.canvas_frame.pack(fill="both", expand=True)
 
-            self.canvas = tk.Canvas(self.canvas_frame, bg="white", scrollregion=(0, 0, 2000, 1000))
+            # Crear el canvas para dibujar la tabla
+            self.canvas = tk.Canvas(self.canvas_frame, bg="white")
+            self.canvas.grid(row=0, column=0, sticky="nsew")
+
+            # Crear scrollbars y vincularlas al canvas
             self.scroll_x = tk.Scrollbar(self.canvas_frame, orient="horizontal", command=self.canvas.xview)
             self.scroll_y = tk.Scrollbar(self.canvas_frame, orient="vertical", command=self.canvas.yview)
-            
-            self.canvas.configure(xscrollcommand=self.scroll_x.set, yscrollcommand=self.scroll_y.set)
-            self.canvas.grid(row=0, column=0, sticky="nsew")
             self.scroll_x.grid(row=1, column=0, sticky="ew")
             self.scroll_y.grid(row=0, column=1, sticky="ns")
-            
+
+            # Configurar el canvas con las scrollbars
+            self.canvas.configure(xscrollcommand=self.scroll_x.set, yscrollcommand=self.scroll_y.set)
             self.canvas_frame.grid_rowconfigure(0, weight=1)
             self.canvas_frame.grid_columnconfigure(0, weight=1)
-        
+
         else:
-            # Limpiar canvas si ya existe
+            # Limpiar el canvas si ya existe
             self.canvas.delete("all")
 
-        # Dibujar tipo Excel
-        cell_width = 100
-        cell_height = 40
+        # Ajustar dinámicamente el tamaño de las celdas según el tamaño de la ventana
+        cell_width = max(self.root.winfo_width() // 20, 80)  # Mínimo 80 px de ancho por celda
+        cell_height = max(self.root.winfo_height() // 30, 30)  # Mínimo 30 px de alto por celda
 
+        # Filtrar equipos para esta sección
         lista_sec1 = [equipo for equipo in self.lista_equipos if equipo.planta == "VDW"]
 
-        num_rows = len(lista_sec1) # preguntar si me pueden devolver el array con todos los de esta seccion
-        num_cols = self.dias_del_mes_siguiente()+1 # esto se cambia en base al numero de dias del siguiente mes
-        
+        if mes == 12:  # Caso especial: diciembre
+            primer_dia_mes = date(anio, mes, 1)
+            ultimo_dia_mes = date(anio + 1, 1, 1) - timedelta(days=1)
+        else:
+            primer_dia_mes = date(anio, mes, 1)
+            ultimo_dia_mes = date(anio, mes + 1, 1) - timedelta(days=1)
+        num_dias_mes = (ultimo_dia_mes - primer_dia_mes).days + 1
 
-        # Ajustar dinámicamente el scrollregion según el contenido
+        # Número de filas y columnas basado en los datos
+        num_rows = len(lista_sec1) + 1  # Una fila extra para encabezados
+        num_cols = num_dias_mes + 1  # Una columna extra para encabezados
+
+        # Ajustar dinámicamente el área desplazable del canvas
         self.canvas.config(scrollregion=(0, 0, num_cols * cell_width, num_rows * cell_height))
 
-        # Dibujar columnas y encabezados de días
+        # Dibujar encabezados de columnas (días)
         for i in range(num_cols):
             x = i * cell_width
-            self.canvas.create_line(x, 0, x, num_rows * cell_height, fill="gray")
-            if i > 0:  # Encabezados para fechas (omitir primera columna)
-                self.canvas.create_text(x + cell_width // 2, 15, text=f"Dia {i}", anchor="center")
+            self.canvas.create_line(x, 0, x, num_rows * cell_height, fill="gray", width=1)
+            if i > 0:  # Encabezados de días (omitir primera columna)
+                self.canvas.create_text(x + cell_width // 2, cell_height // 2, text=f"Día {i}", anchor="center", font=("Arial", 10, "bold"))
 
-        # Dibujar filas y encabezados de tareas
+        # Dibujar encabezados de filas (equipos)
         for j in range(num_rows):
             y = j * cell_height
-            self.canvas.create_line(0, y, num_cols * cell_width, y, fill="gray")
-            if j > 0:  # Encabezados para tareas (omitir primera fila)
-                self.canvas.create_text(50, y + cell_height // 2, text=f"{lista_sec1[j].equipo_tipo}", anchor="center")
+            self.canvas.create_line(0, y, num_cols * cell_width, y, fill="gray", width=1)
+            if j > 0:  # Encabezados de equipos (omitir primera fila)
+                self.canvas.create_text(cell_width // 2, y + cell_height // 2, text=f"{lista_sec1[j-1].equipo_tipo}", anchor="center", font=("Arial", 10, "bold"))
 
-        # Primero escribo los eventos y luego los sobreescribo con los festivos para no tener que hacer magia
-        self.segregar_eventos(lista_sec1, "VDW")
-        # bucle para pintar el array de tareas
-        self.pintar_festivos(num_rows)
+        # Dibujar eventos y festivos
+        self.segregar_eventos(lista_sec1, "VDW", mes, anio)  # Eventos
+        self.pintar_festivos(len(lista_sec1), self.current_month)  # Festivos
 
-
-        # EJEMPLOS DE PRUEBA
-        # segundo y cuarto parametro tienen que ser el mismo, nº de la fila
-        # primero y tercero son los valores que coge para sacar los dias que dura
-        # self.pintar_tareas(2,1,3,1, "Nombre3")
-        # self.pintar_tareas(4,1,5,1, "Nombre2")
-        # self.pintar_tareas(2,2,4,2, "Nombre1") # j i j2 i2
-        # self.pintar_tareas(2,3,5,3, "Nombre4")
-
+        # Mostrar la sección
         self.section_1.pack(fill="both", expand=True)
-
-
-
 
 
 
     # COPIAR SHOW_SECTION_1 EN LOS 3 DE ABAJO (aun no esta acabado)
-    def show_section_2(self):
-        # self.clear_center_frame()
-        # self.section_2.pack(expand=True)
-
+    def show_section_2(self, mes=date.today().month, anio=date.today().year):
         self.clear_center_frame()
 
         if not hasattr(self, 'canvas'):
-            self.canvas_frame = tk.Frame(self.section_2)
+            # Crear un marco para el canvas y scrollbars
+            self.canvas_frame = tk.Frame(self.section_1)
             self.canvas_frame.pack(fill="both", expand=True)
 
-            self.canvas = tk.Canvas(self.canvas_frame, bg="white", scrollregion=(0, 0, 2000, 1000))
+            # Crear el canvas para dibujar la tabla
+            self.canvas = tk.Canvas(self.canvas_frame, bg="white")
+            self.canvas.grid(row=0, column=0, sticky="nsew")
+
+            # Crear scrollbars y vincularlas al canvas
             self.scroll_x = tk.Scrollbar(self.canvas_frame, orient="horizontal", command=self.canvas.xview)
             self.scroll_y = tk.Scrollbar(self.canvas_frame, orient="vertical", command=self.canvas.yview)
-            
-            self.canvas.configure(xscrollcommand=self.scroll_x.set, yscrollcommand=self.scroll_y.set)
-            self.canvas.grid(row=0, column=0, sticky="nsew")
             self.scroll_x.grid(row=1, column=0, sticky="ew")
             self.scroll_y.grid(row=0, column=1, sticky="ns")
-            
+
+            # Configurar el canvas con las scrollbars
+            self.canvas.configure(xscrollcommand=self.scroll_x.set, yscrollcommand=self.scroll_y.set)
             self.canvas_frame.grid_rowconfigure(0, weight=1)
             self.canvas_frame.grid_columnconfigure(0, weight=1)
-        
+
         else:
-            # Limpiar canvas si ya existe
+            # Limpiar el canvas si ya existe
             self.canvas.delete("all")
 
-        # Dibujar tipo Excel
-        cell_width = 100
-        cell_height = 40
+        # Ajustar dinámicamente el tamaño de las celdas según el tamaño de la ventana
+        cell_width = max(self.root.winfo_width() // 20, 80)  # Mínimo 80 px de ancho por celda
+        cell_height = max(self.root.winfo_height() // 30, 30)  # Mínimo 30 px de alto por celda
 
+        # Filtrar equipos para esta sección
         lista_sec1 = [equipo for equipo in self.lista_equipos if equipo.planta == "VDC"]
 
-        num_rows = len(lista_sec1) # preguntar si me pueden devolver el array con todos los de esta seccion
-        num_cols = self.dias_del_mes_siguiente()+1 # esto se cambia en base al numero de dias del siguiente mes
-        
+        if mes == 12:  # Caso especial: diciembre
+            primer_dia_mes = date(anio, mes, 1)
+            ultimo_dia_mes = date(anio + 1, 1, 1) - timedelta(days=1)
+        else:
+            primer_dia_mes = date(anio, mes, 1)
+            ultimo_dia_mes = date(anio, mes + 1, 1) - timedelta(days=1)
+        num_dias_mes = (ultimo_dia_mes - primer_dia_mes).days + 1
 
-        # Ajustar dinámicamente el scrollregion según el contenido
+        # Número de filas y columnas basado en los datos
+        num_rows = len(lista_sec1) + 1  # Una fila extra para encabezados
+        num_cols = num_dias_mes + 1  # Una columna extra para encabezados
+
+        # Ajustar dinámicamente el área desplazable del canvas
         self.canvas.config(scrollregion=(0, 0, num_cols * cell_width, num_rows * cell_height))
 
-        # Dibujar columnas y encabezados de días
+        # Dibujar encabezados de columnas (días)
         for i in range(num_cols):
             x = i * cell_width
-            self.canvas.create_line(x, 0, x, num_rows * cell_height, fill="gray")
-            if i > 0:  # Encabezados para fechas (omitir primera columna)
-                self.canvas.create_text(x + cell_width // 2, 15, text=f"Dia {i}", anchor="center")
+            self.canvas.create_line(x, 0, x, num_rows * cell_height, fill="gray", width=1)
+            if i > 0:  # Encabezados de días (omitir primera columna)
+                self.canvas.create_text(x + cell_width // 2, cell_height // 2, text=f"Día {i}", anchor="center", font=("Arial", 10, "bold"))
 
-        # Dibujar filas y encabezados de tareas
+        # Dibujar encabezados de filas (equipos)
         for j in range(num_rows):
             y = j * cell_height
-            self.canvas.create_line(0, y, num_cols * cell_width, y, fill="gray")
-            if j > 0:  # Encabezados para tareas (omitir primera fila)
-                self.canvas.create_text(50, y + cell_height // 2, text=f"{lista_sec1[j].equipo_tipo}", anchor="center")
+            self.canvas.create_line(0, y, num_cols * cell_width, y, fill="gray", width=1)
+            if j > 0:  # Encabezados de equipos (omitir primera fila)
+                self.canvas.create_text(cell_width // 2, y + cell_height // 2, text=f"{lista_sec1[j-1].equipo_tipo}", anchor="center", font=("Arial", 10, "bold"))
 
-        # Primero escribo los eventos y luego los sobreescribo con los festivos para no tener que hacer magia
-        self.segregar_eventos(lista_sec1, "VDC")
-        # bucle para pintar el array de tareas
-        self.pintar_festivos(num_rows)
+        # Dibujar eventos y festivos
+        self.segregar_eventos(lista_sec1, "VDC", mes, anio)  # Eventos
+        self.pintar_festivos(len(lista_sec1), self.current_month)  # Festivos
 
-
+        # Mostrar la sección
         self.section_1.pack(fill="both", expand=True)
 
-    def show_section_3(self):
-        # self.clear_center_frame()
-        # self.section_3.pack(expand=True)
-
+    # COPIAR SHOW_SECTION_1 EN LOS 3 DE ABAJO (aun no esta acabado)
+    def show_section_3(self, mes=date.today().month, anio=date.today().year):
         self.clear_center_frame()
 
         if not hasattr(self, 'canvas'):
-            self.canvas_frame = tk.Frame(self.section_3)
+            # Crear un marco para el canvas y scrollbars
+            self.canvas_frame = tk.Frame(self.section_1)
             self.canvas_frame.pack(fill="both", expand=True)
 
-            self.canvas = tk.Canvas(self.canvas_frame, bg="white", scrollregion=(0, 0, 2000, 1000))
+            # Crear el canvas para dibujar la tabla
+            self.canvas = tk.Canvas(self.canvas_frame, bg="white")
+            self.canvas.grid(row=0, column=0, sticky="nsew")
+
+            # Crear scrollbars y vincularlas al canvas
             self.scroll_x = tk.Scrollbar(self.canvas_frame, orient="horizontal", command=self.canvas.xview)
             self.scroll_y = tk.Scrollbar(self.canvas_frame, orient="vertical", command=self.canvas.yview)
-            
-            self.canvas.configure(xscrollcommand=self.scroll_x.set, yscrollcommand=self.scroll_y.set)
-            self.canvas.grid(row=0, column=0, sticky="nsew")
             self.scroll_x.grid(row=1, column=0, sticky="ew")
             self.scroll_y.grid(row=0, column=1, sticky="ns")
-            
+
+            # Configurar el canvas con las scrollbars
+            self.canvas.configure(xscrollcommand=self.scroll_x.set, yscrollcommand=self.scroll_y.set)
             self.canvas_frame.grid_rowconfigure(0, weight=1)
             self.canvas_frame.grid_columnconfigure(0, weight=1)
-        
+
         else:
-            # Limpiar canvas si ya existe
+            # Limpiar el canvas si ya existe
             self.canvas.delete("all")
 
-        # Dibujar tipo Excel
-        cell_width = 100
-        cell_height = 40
+        # Ajustar dinámicamente el tamaño de las celdas según el tamaño de la ventana
+        cell_width = max(self.root.winfo_width() // 20, 80)  # Mínimo 80 px de ancho por celda
+        cell_height = max(self.root.winfo_height() // 30, 30)  # Mínimo 30 px de alto por celda
 
+        # Filtrar equipos para esta sección
         lista_sec1 = [equipo for equipo in self.lista_equipos if equipo.planta == "VDM"]
 
-        num_rows = len(lista_sec1) # preguntar si me pueden devolver el array con todos los de esta seccion
-        num_cols = self.dias_del_mes_siguiente()+1 # esto se cambia en base al numero de dias del siguiente mes
-        
+        if mes == 12:  # Caso especial: diciembre
+            primer_dia_mes = date(anio, mes, 1)
+            ultimo_dia_mes = date(anio + 1, 1, 1) - timedelta(days=1)
+        else:
+            primer_dia_mes = date(anio, mes, 1)
+            ultimo_dia_mes = date(anio, mes + 1, 1) - timedelta(days=1)
+        num_dias_mes = (ultimo_dia_mes - primer_dia_mes).days + 1
 
-        # Ajustar dinámicamente el scrollregion según el contenido
+        # Número de filas y columnas basado en los datos
+        num_rows = len(lista_sec1) + 1  # Una fila extra para encabezados
+        num_cols = num_dias_mes + 1  # Una columna extra para encabezados
+
+        # Ajustar dinámicamente el área desplazable del canvas
         self.canvas.config(scrollregion=(0, 0, num_cols * cell_width, num_rows * cell_height))
 
-        # Dibujar columnas y encabezados de días
+        # Dibujar encabezados de columnas (días)
         for i in range(num_cols):
             x = i * cell_width
-            self.canvas.create_line(x, 0, x, num_rows * cell_height, fill="gray")
-            if i > 0:  # Encabezados para fechas (omitir primera columna)
-                self.canvas.create_text(x + cell_width // 2, 15, text=f"Dia {i}", anchor="center")
+            self.canvas.create_line(x, 0, x, num_rows * cell_height, fill="gray", width=1)
+            if i > 0:  # Encabezados de días (omitir primera columna)
+                self.canvas.create_text(x + cell_width // 2, cell_height // 2, text=f"Día {i}", anchor="center", font=("Arial", 10, "bold"))
 
-        # Dibujar filas y encabezados de tareas
+        # Dibujar encabezados de filas (equipos)
         for j in range(num_rows):
             y = j * cell_height
-            self.canvas.create_line(0, y, num_cols * cell_width, y, fill="gray")
-            if j > 0:  # Encabezados para tareas (omitir primera fila)
-                self.canvas.create_text(50, y + cell_height // 2, text=f"{lista_sec1[j].equipo_tipo}", anchor="center")
+            self.canvas.create_line(0, y, num_cols * cell_width, y, fill="gray", width=1)
+            if j > 0:  # Encabezados de equipos (omitir primera fila)
+                self.canvas.create_text(cell_width // 2, y + cell_height // 2, text=f"{lista_sec1[j-1].equipo_tipo}", anchor="center", font=("Arial", 10, "bold"))
 
-        # Primero escribo los eventos y luego los sobreescribo con los festivos para no tener que hacer magia
-        self.segregar_eventos(lista_sec1, "VDM")
-        # bucle para pintar el array de tareas
-        self.pintar_festivos(num_rows)
+        # Dibujar eventos y festivos
+        self.segregar_eventos(lista_sec1, "VDM", mes, anio)  # Eventos
+        self.pintar_festivos(len(lista_sec1), self.current_month)  # Festivos
 
+        # Mostrar la sección
         self.section_1.pack(fill="both", expand=True)
 
 
-
-    def show_section_4(self):
-        # self.clear_center_frame()
-        # self.section_4.pack(expand=True)
+    def show_section_4(self, mes=date.today().month, anio=date.today().year):
         self.clear_center_frame()
 
         if not hasattr(self, 'canvas'):
-            self.canvas_frame = tk.Frame(self.section_4)
+            # Crear un marco para el canvas y scrollbars
+            self.canvas_frame = tk.Frame(self.section_1)
             self.canvas_frame.pack(fill="both", expand=True)
 
-            self.canvas = tk.Canvas(self.canvas_frame, bg="white", scrollregion=(0, 0, 2000, 1000))
+            # Crear el canvas para dibujar la tabla
+            self.canvas = tk.Canvas(self.canvas_frame, bg="white")
+            self.canvas.grid(row=0, column=0, sticky="nsew")
+
+            # Crear scrollbars y vincularlas al canvas
             self.scroll_x = tk.Scrollbar(self.canvas_frame, orient="horizontal", command=self.canvas.xview)
             self.scroll_y = tk.Scrollbar(self.canvas_frame, orient="vertical", command=self.canvas.yview)
-            
-            self.canvas.configure(xscrollcommand=self.scroll_x.set, yscrollcommand=self.scroll_y.set)
-            self.canvas.grid(row=0, column=0, sticky="nsew")
             self.scroll_x.grid(row=1, column=0, sticky="ew")
             self.scroll_y.grid(row=0, column=1, sticky="ns")
-            
+
+            # Configurar el canvas con las scrollbars
+            self.canvas.configure(xscrollcommand=self.scroll_x.set, yscrollcommand=self.scroll_y.set)
             self.canvas_frame.grid_rowconfigure(0, weight=1)
             self.canvas_frame.grid_columnconfigure(0, weight=1)
-        
+
         else:
-            # Limpiar canvas si ya existe
+            # Limpiar el canvas si ya existe
             self.canvas.delete("all")
 
-        # Dibujar tipo Excel
-        cell_width = 100
-        cell_height = 40
+        # Ajustar dinámicamente el tamaño de las celdas según el tamaño de la ventana
+        cell_width = max(self.root.winfo_width() // 20, 80)  # Mínimo 80 px de ancho por celda
+        cell_height = max(self.root.winfo_height() // 30, 30)  # Mínimo 30 px de alto por celda
 
+        # Filtrar equipos para esta sección
         lista_sec1 = [equipo for equipo in self.lista_equipos if equipo.planta == "VDD"]
 
-        num_rows = len(lista_sec1) # preguntar si me pueden devolver el array con todos los de esta seccion
-        num_cols = self.dias_del_mes_siguiente()+1 # esto se cambia en base al numero de dias del siguiente mes
-        
+        if mes == 12:  # Caso especial: diciembre
+            primer_dia_mes = date(anio, mes, 1)
+            ultimo_dia_mes = date(anio + 1, 1, 1) - timedelta(days=1)
+        else:
+            primer_dia_mes = date(anio, mes, 1)
+            ultimo_dia_mes = date(anio, mes + 1, 1) - timedelta(days=1)
+        num_dias_mes = (ultimo_dia_mes - primer_dia_mes).days + 1
 
-        # Ajustar dinámicamente el scrollregion según el contenido
+        # Número de filas y columnas basado en los datos
+        num_rows = len(lista_sec1) + 1  # Una fila extra para encabezados
+        num_cols = num_dias_mes + 1  # Una columna extra para encabezados
+
+        # Ajustar dinámicamente el área desplazable del canvas
         self.canvas.config(scrollregion=(0, 0, num_cols * cell_width, num_rows * cell_height))
 
-        # Dibujar columnas y encabezados de días
+        # Dibujar encabezados de columnas (días)
         for i in range(num_cols):
             x = i * cell_width
-            self.canvas.create_line(x, 0, x, num_rows * cell_height, fill="gray")
-            if i > 0:  # Encabezados para fechas (omitir primera columna)
-                self.canvas.create_text(x + cell_width // 2, 15, text=f"Dia {i}", anchor="center")
+            self.canvas.create_line(x, 0, x, num_rows * cell_height, fill="gray", width=1)
+            if i > 0:  # Encabezados de días (omitir primera columna)
+                self.canvas.create_text(x + cell_width // 2, cell_height // 2, text=f"Día {i}", anchor="center", font=("Arial", 10, "bold"))
 
-        # Dibujar filas y encabezados de tareas
+        # Dibujar encabezados de filas (equipos)
         for j in range(num_rows):
             y = j * cell_height
-            self.canvas.create_line(0, y, num_cols * cell_width, y, fill="gray")
-            if j > 0:  # Encabezados para tareas (omitir primera fila)
-                self.canvas.create_text(50, y + cell_height // 2, text=f"{lista_sec1[j].equipo_tipo}", anchor="center")
+            self.canvas.create_line(0, y, num_cols * cell_width, y, fill="gray", width=1)
+            if j > 0:  # Encabezados de equipos (omitir primera fila)
+                self.canvas.create_text(cell_width // 2, y + cell_height // 2, text=f"{lista_sec1[j-1].equipo_tipo}", anchor="center", font=("Arial", 10, "bold"))
 
-        # Primero escribo los eventos y luego los sobreescribo con los festivos para no tener que hacer magia
-        self.segregar_eventos(lista_sec1, "VDD")
-        # bucle para pintar el array de tareas
-        self.pintar_festivos(num_rows)
+        # Dibujar eventos y festivos
+        self.segregar_eventos(lista_sec1, "VDD", mes, anio)  # Eventos
+        self.pintar_festivos(len(lista_sec1), self.current_month)  # Festivos
 
+        # Mostrar la sección
         self.section_1.pack(fill="both", expand=True)
+
 
 
     def clear_center_frame(self):
@@ -716,4 +806,3 @@ if __name__ == "__main__":
 
     for lote, (equipo, inicio, fin) in plan.items():
          print(f"{lote.nombre} asignado a {equipo.equipo_tipo} planta {equipo.planta} id {equipo.id} desde {inicio} hasta {fin}") """
-

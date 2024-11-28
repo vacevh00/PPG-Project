@@ -170,6 +170,15 @@ def crear_lista_equipos(datos_equipos, datos_diluidores, lista_colores):
             tecnologia2=fila["Tecnología"]
             colores2 = set()
             colores2.add(fila["Planning Class"])
+    for i in range(diluidores_dict[equipo_ant]):
+        equipo_obj = Equipo(
+            colores=colores2,
+            planta=planta2,
+            tecnologia=tecnologia2,
+            equipo_tipo=equipo_ant,
+            id=i
+        )
+        lista_equipos.append(equipo_obj)
     return lista_equipos
 
 # toString de los equipos
@@ -277,6 +286,7 @@ def main_app():
     datos_equipos = pd.read_excel(ruta_archivo, sheet_name="equipos", usecols=["Planning Class", "Planta", "Tecnología", "Equipo", "Capacidad (lote/semana)"])
     #print(datos_equipos)
     datos_diluidores = pd.read_excel(ruta_archivo, sheet_name="maquinas", usecols=["Etiquetas de fila", "Nº Equipos"])
+    #print(datos_diluidores)
     lista_colores = crear_lista_colores(datos_pinturas)
     #print_lista_colores(lista_colores)
     lista_equipos = crear_lista_equipos(datos_equipos, datos_diluidores, lista_colores)
