@@ -229,13 +229,13 @@ class App:
         self.buttons_frame.pack(fill="x")
         
         # Botones para cambiar de vista 
-        self.button1 = tk.Button(self.buttons_frame, text="        VDW        ", command=self.show_section_1)
+        self.button1 = tk.Button(self.buttons_frame, text="        VDW        ", command=lambda: self.show_section_1(self.current_month, self.current_year))
         self.button1.pack(side="left", padx=10)
-        self.button2 = tk.Button(self.buttons_frame, text="        VDC        ", command=self.show_section_2)
+        self.button2 = tk.Button(self.buttons_frame, text="        VDC        ", command=lambda: self.show_section_2(self.current_month, self.current_year))
         self.button2.pack(side="left", padx=10)
-        self.button3 = tk.Button(self.buttons_frame, text="        VDM        ", command=self.show_section_3)
+        self.button3 = tk.Button(self.buttons_frame, text="        VDM        ", command=lambda: self.show_section_3(self.current_month, self.current_year))
         self.button3.pack(side="left", padx=10)
-        self.button4 = tk.Button(self.buttons_frame, text="        VDD        ", command=self.show_section_4)
+        self.button4 = tk.Button(self.buttons_frame, text="        VDD        ", command=lambda: self.show_section_4(self.current_month, self.current_year))
         self.button4.pack(side="left", padx=10)
 
 
@@ -269,6 +269,7 @@ class App:
         mes = self.months.index(selected_month) + 1  # Convertir a índice de mes (1-12)
         anio = date.today().year
         self.current_month = mes
+        self.current_year= anio
         # Redibujar la tabla para el mes seleccionado
         self.clear_center_frame()  # Limpiar la tabla actual
         if section==1:
@@ -406,13 +407,17 @@ class App:
         )
 
     def segregar_eventos(self, equipos_total, planta, mes, anio):
+        # print(f"mes={mes}, anio={anio}, planta={planta}")
         primer_dia_mes = pd.Timestamp(year=anio, month=mes, day=1)
         ultimo_dia_mes = primer_dia_mes + pd.offsets.MonthEnd(0)
-
+        # i = 0
         for lote, (equipo, inicio, fin) in self.plan.items():
+            
             # print(f"{lote.nombre} asignado a {equipo.equipo_tipo} id {equipo.id} desde {inicio} hasta {fin}")
             inicio = pd.Timestamp(inicio) if not isinstance(inicio, pd.Timestamp) else inicio
             fin = pd.Timestamp(fin) if not isinstance(fin, pd.Timestamp) else fin
+
+            # print(type(inicio))
 
             if equipo.planta != planta:
                 continue
@@ -436,9 +441,13 @@ class App:
                 continue
 
             indice, equipo_encontrado = resultado
-
+            # i +=1
+            # print(inicio)
+            # print(fin)
+            #print(f"{lote.nombre} asignado a {equipo.equipo_tipo} id {equipo.id} desde {inicio} hasta {fin}")
             # Pintar la tarea en el canvas
             self.pintar_tareas(inicio.day, indice + 1, fin.day, indice + 1, lote.nombre)
+        # print(i)
                
     def primer_dia_mes_siguiente(self):
         hoy = datetime.now()
@@ -516,6 +525,8 @@ class App:
         # Ajustar dinámicamente el tamaño de las celdas según el tamaño de la ventana
         cell_width = max(self.root.winfo_width() // 20, 80)  # Mínimo 80 px de ancho por celda
         cell_height = max(self.root.winfo_height() // 30, 30)  # Mínimo 30 px de alto por celda
+
+        #print(f"mes={mes}, anio={anio}")
 
         # Filtrar equipos para esta sección
         lista_sec1 = [equipo for equipo in self.lista_equipos if equipo.planta == "VDW"]
@@ -792,10 +803,11 @@ if __name__ == "__main__":
     app = MainWindow(root)
     root.mainloop()
     
+"""
 
     plan, lista_equipos = Backend_App.main_app()
 
-"""     for i in plan:
+    for i in plan:
          print(i)
 
     print("\n\n\n")
@@ -805,4 +817,6 @@ if __name__ == "__main__":
 
 
     for lote, (equipo, inicio, fin) in plan.items():
-         print(f"{lote.nombre} asignado a {equipo.equipo_tipo} planta {equipo.planta} id {equipo.id} desde {inicio} hasta {fin}") """
+         print(f"{lote.nombre} asignado a {equipo.equipo_tipo} planta {equipo.planta} id {equipo.id} desde {inicio} hasta {fin}")
+         
+"""
