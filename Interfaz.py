@@ -58,12 +58,20 @@ class MainWindow:
             command=self.on_button_click2
         )
 
+        self.button3 = ttk.Button(
+            text="i",
+            style="Add.TButton",
+            command=self.on_button_click3
+        )
+
+
         self.button2.place(x=10, y=10)
+        self.button3.place(x=160, y=10, width=30)
         self.button.place(relx=0.5, rely=0.5, anchor="center")
 
     def on_button_click(self):
         self.button.config(state="disabled")
-        self.root.after(2000, self.change_window)
+        self.root.after(1200, self.change_window)
 
     def change_window(self):
         # Ocultar la ventana principal
@@ -81,7 +89,11 @@ class MainWindow:
 
     def on_button_click2(self):
         self.button2.config(state="disabled")
-        self.root.after(1500, self.change_window2)
+        self.root.after(500, self.change_window2)
+    
+    def on_button_click3(self):
+        messagebox.showinfo("Información", f"Grupo 2 de Dirección de Proyectos\n\n"
+                                        f"Trabajo final para PPG\n")
     
     def change_window2(self):
         # Ocultar la ventana principal
@@ -245,8 +257,11 @@ class App:
             "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
         ]
 
+        current_month_index = date.today().month - 1  # Los meses de datetime van de 1 a 12
+        current_month_name = self.months[current_month_index]   # Nombre del mes actual
+
         self.month_combobox = ttk.Combobox(self.buttons_frame, values=self.months, state="readonly", width=12)
-        self.month_combobox.set("Mes")  # Texto inicial del desplegable
+        self.month_combobox.set(current_month_name)
         self.month_combobox.pack(side="right", padx=20)
         self.month_combobox.bind("<<ComboboxSelected>>", self.on_month_selected)
 
@@ -257,7 +272,9 @@ class App:
         self.section_3 = tk.Frame(self.center_frame)
         self.section_4 = tk.Frame(self.center_frame)
 
-        #self.show_section_1()
+        self.on_month_selected()
+        self.show_section_2(self.current_month, self.current_year)
+        
 
     # TO-DO Meses
     def on_month_selected(self, event=None, section=1):
@@ -446,7 +463,7 @@ class App:
             # print(fin)
             #print(f"{lote.nombre} asignado a {equipo.equipo_tipo} id {equipo.id} desde {inicio} hasta {fin}")
             # Pintar la tarea en el canvas
-            self.pintar_tareas(inicio.day, indice + 1, fin.day, indice + 1, lote.nombre)
+            self.pintar_tareas(inicio.day, indice + 1, fin.day, indice + 1, lote.item)
         # print(i)
                
     def primer_dia_mes_siguiente(self):
