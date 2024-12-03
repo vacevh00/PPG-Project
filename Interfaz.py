@@ -16,6 +16,7 @@ class MainWindow:
         self.root.title("MAIN")
         self.root.geometry("600x500")
         self.root.resizable(False, False)
+        self.version = "1"
 
         # Cambiar el color de fondo de la ventana principal
         self.root.configure(bg="#c4c4c4")  # Fondo gris claro
@@ -93,7 +94,8 @@ class MainWindow:
     
     def on_button_click3(self):
         messagebox.showinfo("Información", f"Grupo 2 de Dirección de Proyectos\n\n"
-                                        f"Trabajo final para PPG\n")
+                                        f"Trabajo final para PPG\n"
+                                        f"Versión " + self.version )
     
     def change_window2(self):
         # Ocultar la ventana principal
@@ -227,7 +229,7 @@ class App:
         self.main_window = main_window
         self.main_button = main_button
         self.current_month = date.today().month + 1
-        
+        self.current_year = date.today().year
         # Frame principal
         self.main_frame = tk.Frame(self.root)
         self.main_frame.pack(fill="both", expand=True)
@@ -261,7 +263,7 @@ class App:
         current_month_name = self.months[current_month_index]   # Nombre del mes actual
 
         self.month_combobox = ttk.Combobox(self.buttons_frame, values=self.months, state="readonly", width=12)
-        self.month_combobox.set(current_month_name)
+        self.month_combobox.set("Mes")
         self.month_combobox.pack(side="right", padx=20)
         self.month_combobox.bind("<<ComboboxSelected>>", self.on_month_selected)
 
@@ -272,8 +274,8 @@ class App:
         self.section_3 = tk.Frame(self.center_frame)
         self.section_4 = tk.Frame(self.center_frame)
 
-        self.on_month_selected()
-        self.show_section_2(self.current_month, self.current_year)
+        #self.on_month_selected()
+        #self.show_section_2(self.current_month, self.current_year)
         
 
     # TO-DO Meses
