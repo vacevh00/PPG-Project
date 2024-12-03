@@ -17,6 +17,10 @@ Este código ha sido creado, implementado y probado en la versión `Python 3.12.
 ```bash
 $ pip3 install -r requirements.txt
 ```
+Una vez instaladas las librerias necesarias, vamos a ejecutar el siguiente comando en una terminal:
+```bash
+$ python3 Interfaz.py
+```
 
 ### Ejecución a traves de un ejecutable (.exe)
 En este caso, no vamos a necesitar instalar ninguna dependencia ya que el código ha sido compilado con las propias librerias, por lo que no es necesario ningun tipo de paso adicional. Simplemente hacemos doble clic en el ejecutable y ya se abriría.
