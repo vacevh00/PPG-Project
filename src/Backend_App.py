@@ -280,8 +280,8 @@ def visualizar_gantt(plan, titulo="Plan de Producción"):
     plt.show()
 
 # main
-def main_app():
-    ruta_archivo = "../docs/plan.xlsx"
+def main_app(ruta):
+    ruta_archivo = ruta
     datos_pinturas = pd.read_excel(ruta_archivo, sheet_name="prod", usecols=["PPG_Planning_Class", "Item", "Plant","Required_Completion_Date", "Standard_Prod_Time", "Routing_Code"])
     datos_equipos = pd.read_excel(ruta_archivo, sheet_name="equipos", usecols=["Planning Class", "Planta", "Tecnología", "Equipo", "Capacidad (lote/semana)"])
     #print(datos_equipos)

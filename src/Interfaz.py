@@ -17,6 +17,10 @@ class MainWindow:
         self.root.geometry("600x500")
         self.root.resizable(False, False)
         self.version = "1"
+        self.ruta = "../docs/plan.xlsx"
+
+        self.label = tk.Label(root, text="Sin archivo seleccionado", wraplength=400, justify="left", font=("Arial", 10), bg="#c4c4c4")
+        self.label.place(x=290, y=18)
 
         # Cambiar el color de fondo de la ventana principal
         self.root.configure(bg="#c4c4c4")  # Fondo gris claro
@@ -65,9 +69,10 @@ class MainWindow:
             command=self.on_button_click3
         )
 
+        self.button4.place(x=160, y=10)
 
         self.button2.place(x=10, y=10)
-        self.button3.place(x=160, y=10, width=30)
+        self.button3.place(x=560, y=10, width=30)
         self.button.place(relx=0.5, rely=0.5, anchor="center")
 
     def on_button_click(self):
@@ -96,7 +101,17 @@ class MainWindow:
         messagebox.showinfo("Información", f"Grupo 2 de Dirección de Proyectos\n\n"
                                         f"Trabajo final para PPG\n"
                                         f"Versión " + self.version )
-    
+
+    def on_button_click4(self):
+        ruta_archivo = filedialog.askopenfilename(
+            title="Seleccionar archivo",
+            filetypes=[("Hojas de calculo", "*.xlsx")]
+        )
+        if ruta_archivo:
+            self.ruta = ruta_archivo
+            nombre = ruta_archivo.split("/")[-1]
+            self.label.config(text=f"Seleccionado: {nombre}")
+
     def change_window2(self):
         # Ocultar la ventana principal
         new_window = tk.Tk()
@@ -222,10 +237,10 @@ class Configuration:
 
 
 class App:
-    def __init__(self, root, main_window, main_button):
+    def __init__(self, root, main_window, main_button, ruta):
         self.root = root
         self.root.title("PPG-DEV")
-        self.plan, self.lista_equipos = Backend_App.main_app()
+        self.plan, self.lista_equipos = Backend_App.main_app(ruta)
         self.main_window = main_window
         self.main_button = main_button
         self.current_month = date.today().month + 1
