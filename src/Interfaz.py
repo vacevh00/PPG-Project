@@ -2,35 +2,35 @@ import tkinter as tk
 from tkinter import TclError
 from tkinter import messagebox
 from datetime import date, timedelta
+from tkinter import filedialog
 from workalendar.europe import CastileAndLeon
 import random
 from tkinter import ttk
 from datetime import datetime
 import Backend_App
 import pandas as pd
-
+import ttkbootstrap as ttk
+from ttkbootstrap.constants import *
 
 class MainWindow:
     def __init__(self, root):
         self.root = root
+        self.style = ttk.Style("superhero")
         self.root.title("MAIN")
         self.root.geometry("600x500")
         self.root.resizable(False, False)
-        self.version = "1"
+        self.version = "v 1.3"
+
         self.ruta = "../docs/plan.xlsx"
-
-        self.label = tk.Label(root, text="Sin archivo seleccionado", wraplength=400, justify="left", font=("Arial", 10), bg="#c4c4c4")
-        self.label.place(x=290, y=18)
-
+        self.label = tk.Label(root, text="Sin archivo seleccionado")
+        self.label.place(x=270, y=15)
         # Cambiar el color de fondo de la ventana principal
-        self.root.configure(bg="#c4c4c4")  # Fondo gris claro
-
+        #self.root.configure(bg="#c4c4c4")  # Fondo gris claro
         # Crear estilos personalizados para los botones
-        self.style = ttk.Style()
-        self.style.theme_use("clam")
-
+        #self.style = ttk.Style()
+        #self.style.theme_use("clam")
         # Estilo para el botón "Iniciar aplicación"
-        self.style.configure(
+        """self.style.configure(
             "Start.TButton",
             font=("Arial", 12, "bold"),
             foreground="white",
@@ -38,7 +38,6 @@ class MainWindow:
             padding=10
         )
         self.style.map("Start.TButton", background=[("active", "#0056b3")])  # Hover
-
         # Estilo para el botón "Añadir nuevo lote"
         self.style.configure(
             "Add.TButton",
@@ -48,29 +47,37 @@ class MainWindow:
             padding=10
         )
         self.style.map("Add.TButton", background=[("active", "#0056b3")])
-
+"""
         # Botón "Iniciar aplicación"
         self.button = ttk.Button(
             text="Iniciar aplicación",
-            style="Start.TButton",
+            bootstyle=SUCCESS,  # Botón con estilo moderno
             command=self.on_button_click
         )
 
         # Botón "Añadir nuevo lote"
         self.button2 = ttk.Button(
             text="Añadir nuevo lote",
-            style="Add.TButton",
+            bootstyle=INFO,  # Estilo moderno con color informativo
             command=self.on_button_click2
         )
 
+        # Botón "Información"
         self.button3 = ttk.Button(
             text="i",
-            style="Add.TButton",
+            bootstyle=INFO,  # Botón estilo advertencia
             command=self.on_button_click3
         )
 
-        self.button4.place(x=160, y=10)
+        self.button4 = ttk.Button(
+            text="Seleccionar archivo",
+            bootstyle=INFO,
+            command=self.on_button_click4
+        )
 
+
+        # Posicionar botones
+        self.button4.place(x=140, y=10)
         self.button2.place(x=10, y=10)
         self.button3.place(x=560, y=10, width=30)
         self.button.place(relx=0.5, rely=0.5, anchor="center")
@@ -82,26 +89,33 @@ class MainWindow:
     def change_window(self):
         # Ocultar la ventana principal
         self.root.withdraw()
+        new_window = tk.Toplevel()  # Usa tk.Toplevel para crear una nueva ventana
+        new_window.title("Nueva Ventana")
+        new_window.geometry("1200x900")
+        #style = ttk.Style("superhero")  # Cambiar el estilo aquí
+        new_window.configure(bg="#4f4f4f")  # Fondo opcional para la nueva ventana
 
-        new_window = tk.Tk()
-        app = App(new_window, self.root, self.button)
+        # Crear y mostrar el contenido de la nueva ventana
+        app = App(new_window, self.root, self.button, self.ruta)
         try:
-            new_window.state('zoomed')
+            new_window.state('zoomed')  # Maximizar la ventana si es posible
         except TclError:
             pass
-        new_window.geometry("1200x900")
         new_window.protocol("WM_DELETE_WINDOW", app.on_close)
         new_window.mainloop()
 
     def on_button_click2(self):
         self.button2.config(state="disabled")
         self.root.after(500, self.change_window2)
-    
-    def on_button_click3(self):
-        messagebox.showinfo("Información", f"Grupo 2 de Dirección de Proyectos\n\n"
-                                        f"Trabajo final para PPG\n"
-                                        f"Versión " + self.version )
 
+    def on_button_click3(self):
+        # Usar el método `messagebox` de ttkbootstrap
+        ttk.dialogs.Messagebox.show_info(
+            title="Información",
+            message=f"Grupo 2 de Dirección de Proyectos\n\n"
+                    f"Trabajo final para PPG\n"
+                    f"Versión {self.version}"
+        )
     def on_button_click4(self):
         ruta_archivo = filedialog.askopenfilename(
             title="Seleccionar archivo",
@@ -113,38 +127,27 @@ class MainWindow:
             self.label.config(text=f"Seleccionado: {nombre}")
 
     def change_window2(self):
-        # Ocultar la ventana principal
-        new_window = tk.Tk()
-        config = Configuration(new_window, self.root, self.button2)
+        # Crear una nueva ventana de configuración
+        new_window = tk.Toplevel()  # Crea una nueva ventana de nivel superior
+        new_window.title("Configuración")
         new_window.geometry("600x450")
+
+        # Configurar fondo opcional
+        #new_window.configure(bg="#4f4f4f")
+
+        # Crear y mostrar el contenido de la nueva ventana
+        config = Configuration(new_window, self.root, self.button2)
         new_window.protocol("WM_DELETE_WINDOW", config.on_close)
         new_window.mainloop()
-        
+
 class Configuration:
     def __init__(self, root, main_window, main_button):
         self.root = root
         self.root.title("Añadir Lote")
         self.main_window = main_window
         self.main_button = main_button
-
-        # Configurar la ventana con el mismo color de fondo que en MainWindow
-        self.root.configure(bg="#c4c4c4")  # Fondo gris claro
-        self.root.geometry("500x900")
+        self.root.geometry("500x600")
         self.root.resizable(False, False)
-
-        # Crear los estilos para los botones de la misma manera que en MainWindow
-        self.style = ttk.Style()
-        self.style.theme_use("clam")
-
-        # Estilo para el botón "Guardar" (similar al botón "Iniciar aplicación")
-        self.style.configure(
-            "Save.TButton",
-            font=("Arial", 12, "bold"),
-            foreground="white",
-            background="#007bff",  # Azul
-            padding=10
-        )
-        self.style.map("Save.TButton", background=[("active", "#0056b3")])  # Hover
 
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
 
@@ -153,44 +156,44 @@ class Configuration:
 
     def create_widgets(self):
         # Etiqueta de título
-        tk.Label(self.root, text="Añadir Lote", font=("Arial", 16), bg="#c4c4c4").pack(pady=10)
+        ttk.Label(self.root, text="Añadir Lote", font=("Arial", 16, "bold"), bootstyle=INFO).pack(pady=10)
 
         # Campo para ID del lote
-        tk.Label(self.root, text="ID de Lote:", bg="#c4c4c4").pack(anchor="w", padx=20, pady=5)
-        self.lote_id_entry = tk.Entry(self.root)
+        ttk.Label(self.root, text="ID de Lote:", bootstyle="info").pack(anchor="w", padx=20, pady=5)
+        self.lote_id_entry = ttk.Entry(self.root, bootstyle="info")
         self.lote_id_entry.pack(fill="x", padx=20)
 
         # Campo para Routing Code
-        tk.Label(self.root, text="Routing Code:", bg="#c4c4c4").pack(anchor="w", padx=20, pady=5)
-        self.routing_code_entry = tk.Entry(self.root)
+        ttk.Label(self.root, text="Routing Code:", bootstyle="info").pack(anchor="w", padx=20, pady=5)
+        self.routing_code_entry = ttk.Entry(self.root, bootstyle="info")
         self.routing_code_entry.pack(fill="x", padx=20)
 
         # Selección de Planta (Lista Desplegable)
-        tk.Label(self.root, text="Planta:", bg="#c4c4c4").pack(anchor="w", padx=20, pady=5)
+        ttk.Label(self.root, text="Planta:", bootstyle="info").pack(anchor="w", padx=20, pady=5)
         self.planta_options = ["VDC", "VDD", "VDW", "VDM"]
         self.planta_combo = ttk.Combobox(self.root, values=self.planta_options, state="readonly")
         self.planta_combo.pack(fill="x", padx=20)
         self.planta_combo.set("Seleccionar Planta")  # Placeholder inicial
 
         # Selección de Planning Class (Lista Desplegable)
-        tk.Label(self.root, text="Planning Class:", bg="#c4c4c4").pack(anchor="w", padx=20, pady=5)
+        ttk.Label(self.root, text="Planning Class:", bootstyle="info").pack(anchor="w", padx=20, pady=5)
         self.planning_class_options = ["VD-APA", "VDCBE1", "VDCBM1", "VD-N4A", "VDWBBC"]
         self.planning_class_combo = ttk.Combobox(self.root, values=self.planning_class_options, state="readonly")
         self.planning_class_combo.pack(fill="x", padx=20)
         self.planning_class_combo.set("Seleccionar Clase")  # Placeholder inicial
 
         # Selección de Fecha de Inicio
-        tk.Label(self.root, text="Introduce la fecha (dd/mm/YYYY):", bg="#c4c4c4").pack(anchor="w", padx=20, pady=5)
-        self.start_date = tk.Entry(self.root)
+        ttk.Label(self.root, text="Introduce la fecha (dd/mm/YYYY):", bootstyle="info").pack(anchor="w", padx=20, pady=5)
+        self.start_date = ttk.Entry(self.root, bootstyle="info")
         self.start_date.pack(fill="x", padx=20)
 
         # Duración Estimada
-        tk.Label(self.root, text="Duración Estimada (días):", bg="#c4c4c4").pack(anchor="w", padx=20, pady=5)
-        self.duracion_entry = tk.Entry(self.root)
+        ttk.Label(self.root, text="Duración Estimada (días):", bootstyle="info").pack(anchor="w", padx=20, pady=5)
+        self.duracion_entry = ttk.Entry(self.root, bootstyle="info")
         self.duracion_entry.pack(fill="x", padx=20)
 
-        # Botón de Guardar con el estilo configurado
-        self.save_button = ttk.Button(self.root, text="Guardar", style="Save.TButton", command=self.save_data)
+        # Botón de Guardar
+        self.save_button = ttk.Button(self.root, text="Guardar", bootstyle=SUCCESS, command=self.save_data)
         self.save_button.pack(pady=20)
 
     def save_data(self):
@@ -201,21 +204,29 @@ class Configuration:
         planning_class = self.planning_class_combo.get()
         start_date = self.start_date.get()
         duracion = self.duracion_entry.get()
+
         # Validar datos
         if not lote_id or not routing_code or planta == "Seleccionar Planta" or planning_class == "Seleccionar Clase" or not duracion.isdigit() or self.correctDate(start_date) == False:
-            messagebox.showerror("Error", "Por favor, complete todos los campos correctamente.")
+            ttk.dialogs.Messagebox.show_error(
+                title="Error",
+                message="Por favor, complete todos los campos correctamente."
+            )
             return
+
         # Simular guardar datos (puedes reemplazar esto con lógica real)
-        messagebox.showinfo("Guardado", f"Datos guardados:\n\n"
-                                        f"ID de Lote: {lote_id}\n"
-                                        f"Routing Code: {routing_code}\n"
-                                        f"Planta: {planta}\n"
-                                        f"Planning Class: {planning_class}\n"
-                                        f"Fecha de Inicio: {start_date}\n"
-                                        f"Duración Estimada: {duracion} días")
+        ttk.dialogs.Messagebox.show_info(
+            title="Guardado",
+            message=f"Datos guardados:\n\n"
+                    f"ID de Lote: {lote_id}\n"
+                    f"Routing Code: {routing_code}\n"
+                    f"Planta: {planta}\n"
+                    f"Planning Class: {planning_class}\n"
+                    f"Fecha de Inicio: {start_date}\n"
+                    f"Duración Estimada: {duracion} días"
+        )
         self.root.destroy()  # Cerrar la ventana después de guardar
         self.main_button.config(state="normal")
-    
+
     def correctDate(self, startDate):
         try:
             parsed_date = datetime.strptime(startDate, "%d/%m/%Y").date()
@@ -227,13 +238,18 @@ class Configuration:
                 return True
         except ValueError:
             messagebox.showerror("Error", "Formato incorrecto. Usa dd/mm/YYYY.")
+
     def on_close(self):
         # Confirmación para cerrar
-        response = messagebox.askyesno("Confirmar salida", "¿Está seguro de que quiere salir?")
-        if response:
+        response = ttk.dialogs.Messagebox.show_question(
+            title="Confirmar salida",
+            message="¿Está seguro de que quiere salir?"
+        )
+        if response == "Yes":
             self.root.destroy()
             self.main_window.deiconify()
             self.main_button.config(state="normal")
+
 
 
 class App:
@@ -585,14 +601,14 @@ class App:
             x = i * cell_width
             self.canvas.create_line(x, 0, x, num_rows * cell_height, fill="gray", width=1)
             if i > 0:  # Encabezados de días (omitir primera columna)
-                self.canvas.create_text(x + cell_width // 2, cell_height // 2, text=f"Día {i}", anchor="center", font=("Arial", 10, "bold"))
+                self.canvas.create_text(x + cell_width // 2, cell_height // 2, text=f"Día {i}", anchor="center", fill="white", font=("Arial", 10, "bold"))
 
         # Dibujar encabezados de filas (equipos)
         for j in range(num_rows):
             y = j * cell_height
             self.canvas.create_line(0, y, num_cols * cell_width, y, fill="gray", width=1)
             if j > 0:  # Encabezados de equipos (omitir primera fila)
-                self.canvas.create_text(cell_width // 2, y + cell_height // 2, text=f"{lista_sec1[j-1].equipo_tipo}", anchor="center", font=("Arial", 10, "bold"))
+                self.canvas.create_text(cell_width // 2, y + cell_height // 2, text=f"{lista_sec1[j-1].equipo_tipo}", anchor="center", fill="white", font=("Arial", 10, "bold"))
 
         # Dibujar eventos y festivos
         self.segregar_eventos(lista_sec1, "VDW", mes, anio)  # Eventos
@@ -658,14 +674,14 @@ class App:
             x = i * cell_width
             self.canvas.create_line(x, 0, x, num_rows * cell_height, fill="gray", width=1)
             if i > 0:  # Encabezados de días (omitir primera columna)
-                self.canvas.create_text(x + cell_width // 2, cell_height // 2, text=f"Día {i}", anchor="center", font=("Arial", 10, "bold"))
+                self.canvas.create_text(x + cell_width // 2, cell_height // 2, text=f"Día {i}", anchor="center", fill="white", font=("Arial", 10, "bold"))
 
         # Dibujar encabezados de filas (equipos)
         for j in range(num_rows):
             y = j * cell_height
             self.canvas.create_line(0, y, num_cols * cell_width, y, fill="gray", width=1)
             if j > 0:  # Encabezados de equipos (omitir primera fila)
-                self.canvas.create_text(cell_width // 2, y + cell_height // 2, text=f"{lista_sec1[j-1].equipo_tipo}", anchor="center", font=("Arial", 10, "bold"))
+                self.canvas.create_text(cell_width // 2, y + cell_height // 2, text=f"{lista_sec1[j-1].equipo_tipo}", anchor="center", fill="white", font=("Arial", 10, "bold"))
 
         # Dibujar eventos y festivos
         self.segregar_eventos(lista_sec1, "VDC", mes, anio)  # Eventos
@@ -729,14 +745,14 @@ class App:
             x = i * cell_width
             self.canvas.create_line(x, 0, x, num_rows * cell_height, fill="gray", width=1)
             if i > 0:  # Encabezados de días (omitir primera columna)
-                self.canvas.create_text(x + cell_width // 2, cell_height // 2, text=f"Día {i}", anchor="center", font=("Arial", 10, "bold"))
+                self.canvas.create_text(x + cell_width // 2, cell_height // 2, text=f"Día {i}", anchor="center", fill="white", font=("Arial", 10, "bold"))
 
         # Dibujar encabezados de filas (equipos)
         for j in range(num_rows):
             y = j * cell_height
             self.canvas.create_line(0, y, num_cols * cell_width, y, fill="gray", width=1)
             if j > 0:  # Encabezados de equipos (omitir primera fila)
-                self.canvas.create_text(cell_width // 2, y + cell_height // 2, text=f"{lista_sec1[j-1].equipo_tipo}", anchor="center", font=("Arial", 10, "bold"))
+                self.canvas.create_text(cell_width // 2, y + cell_height // 2, text=f"{lista_sec1[j-1].equipo_tipo}", anchor="center", fill="white", font=("Arial", 10, "bold"))
 
         # Dibujar eventos y festivos
         self.segregar_eventos(lista_sec1, "VDM", mes, anio)  # Eventos
@@ -800,14 +816,14 @@ class App:
             x = i * cell_width
             self.canvas.create_line(x, 0, x, num_rows * cell_height, fill="gray", width=1)
             if i > 0:  # Encabezados de días (omitir primera columna)
-                self.canvas.create_text(x + cell_width // 2, cell_height // 2, text=f"Día {i}", anchor="center", font=("Arial", 10, "bold"))
+                self.canvas.create_text(x + cell_width // 2, cell_height // 2, text=f"Día {i}", anchor="center", fill="white", font=("Arial", 10, "bold"))
 
         # Dibujar encabezados de filas (equipos)
         for j in range(num_rows):
             y = j * cell_height
             self.canvas.create_line(0, y, num_cols * cell_width, y, fill="gray", width=1)
             if j > 0:  # Encabezados de equipos (omitir primera fila)
-                self.canvas.create_text(cell_width // 2, y + cell_height // 2, text=f"{lista_sec1[j-1].equipo_tipo}", anchor="center", font=("Arial", 10, "bold"))
+                self.canvas.create_text(cell_width // 2, y + cell_height // 2, text=f"{lista_sec1[j-1].equipo_tipo}", anchor="center", fill="white", font=("Arial", 10, "bold"))
 
         # Dibujar eventos y festivos
         self.segregar_eventos(lista_sec1, "VDD", mes, anio)  # Eventos
