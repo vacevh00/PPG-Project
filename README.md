@@ -19,6 +19,7 @@ $ pip3 install -r requirements.txt
 ```
 Una vez instaladas las librerias necesarias, vamos a ejecutar el siguiente comando en una terminal:
 ```bash
+$ cd src/
 $ python3 Interfaz.py
 ```
 
