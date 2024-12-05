@@ -1,9 +1,3 @@
-Por implementar:
-- Dejar la interfaz más bonita visualmente
-- Dejar codigo base de datos (dejar camino para posibles implementaciones)
-- Compilar codigo para enviar .exe
-- Crear carpetas para separar las cosas (excel del codigo, imagenes del código...)
-
 # Proyecto: PPG-Project
 
 ## Descripción  
@@ -44,9 +38,3 @@ Algunas de las posibles mejoras que contemplamos como equipo serían:
 - Una limpieza más profunda del código para reutilizar el código.
 - Mejora visual de la interfaz de usuario.
 - En caso de necesitar un sistema de autenticación, implementarlo en la primera interfaz.
-
-## Contribuidores al código
-- [Nombre 1 - Rol]
-- [Nombre 2 - Rol]
-- [Nombre 3 - Rol]
-- [Nombre 4 - Rol]
